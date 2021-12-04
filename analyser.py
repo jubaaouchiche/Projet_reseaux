@@ -636,10 +636,10 @@ outputFile = open("outputFile", "w")
 file_name = input("Fichier à analyser : ")
 print(file_name)
 f = open(file_name, "r")
-trames = parse_file(f)
+trames = FichierParse(f)
 print(trames)
 
-couches(trames)
+Couches(trames)
 f.close()
 outputFile.close()
 
