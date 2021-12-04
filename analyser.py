@@ -519,9 +519,132 @@ def main():
     outputFile.close()
 
 
+
 if __name__ == "__main__":
     main()
 
 
 
- 
+
+
+
+
+
+
+
+def hex_to_bin(byte):
+    """Cette fonction traduit UN octet de l'hexadecimal vers le binaire
+    Argument : octet en hexa (str),
+    Retourne : octet en binaire (str)
+    """
+    return '{:0>8}'.format(format(int(byte, 16), 'b'))
+    
+
+def DNS(trame, length_placeholder):
+    """Cette fonction analyse le segment DNS et affiche ses champs
+    Argument : 1)-> trame a analyser,
+    				  2)-> la longueur de l'entete.
+    """
+
+    offset = length_placeholder
+    
+    id = hex_to_bin(trame[offset]) + hex_to_bin(trame[offset+1])
+
+    offset += 2
+    current_byte = hex_to_bin(trame[offset])
+    qr = current_byte[:1]
+    opcode_int = int(current_byte[1:5], 2)
+    opcode_dict = {0 : "Query", 1 : "Iquery", 2 : "Status"}
+    opcode = "NON PRIS EN CHARGE"
+    if opcode_int in opcode_dict.keys():
+        opcode = opcode_dict[]
+
+    aa = current_byte[5:6]
+
+    tc = current_byte[6:7]
+
+    rd = current_byte[7:8]
+
+    offset += 1
+    current_byte = hex_to_bin(trame[offset])
+    ra = current_byte[:1]
+
+    z = current_byte[1:4]
+
+    rcode_int = int(current_byte[4:8], 2)
+    rcode_dict = {0 : "Pas d'erreur", 1 : "Erreur de format de la requete", 
+    2 : "Probleme sur serveur", 3 : "Le nom n'existe pas", 4 : "Non implemente",
+    5 : "Refus"}
+    rcode = "NON PRIS EN CHARGE"
+    if rcode_int in rcode_dict.keys():
+        rcode = rcode_dict[rcode_int]
+    
+    offset += 1
+    qdcount = int(trame[offset] + trame[offset+1], 16)
+
+    offset += 2
+    ancount = int(trame[offset] + trame[offset+1], 16)
+
+    offset += 2
+    nscount = int(trame[offset] + trame[offset+1], 16)
+
+    offset += 2
+    arcount = int(trame[offset] + trame[offset+1], 16)
+
+    #print DNS results
+    print_s("\tProtocole DNS")
+    print_s("\t\tId : {}".format(id))
+    print_s("\t\tQr : ".format(qr))
+    print_s("\t\tOpcode : ".format(opcode))
+    print_s("\t\tAuthoritative Answer : ".format(aa))
+    print_s("\t\tTc : ".format(tc))
+    print_s("\t\tRd : ".format(rd))
+    print_s("\t\tRa : ".format(ra))
+    print_s("\t\tZ : ".format(z))
+    print_s("\t\tRcode : ".format(rcode))
+    print_s("\t\tQdcount : ".format(qdcount))
+    print_s("\t\tAncount : ".format(ancount))
+    print_s("\t\tNscount : ".format(nscount))
+    print_s("\t\tArcount : ".format(arcount))
+
+    #  /!\
+    #  PAS ENCORE FAIT : decodage des sections Questions,
+    #  Réponses, Autorités et Additionnelles
+    #  /!\
+
+
+def print_s(to_print):
+    print(to_print)
+    outputFile.write(to_print)
+
+
+
+
+
+"""
+
+##########################
+###   MAIN PROGRAM :   ###
+
+
+#   print(format(int(value, 16), 'b'))
+
+
+print("\nAnalyser.py : start\n")
+
+outputFile = open("outputFile", "w")
+file_name = input("Fichier à analyser : ")
+print(file_name)
+f = open(file_name, "r")
+trames = parse_file(f)
+print(trames)
+
+couches(trames)
+f.close()
+outputFile.close()
+
+print("\nAnalyser.py : end\n")
+
+###        END         ###
+##########################
+"""
