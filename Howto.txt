@@ -1,0 +1,9 @@
+### Exécution
+
+1-Tout d'abord il faut installer python3 puis télécharger l'archive du projet.
+2-Ensuite le décompresser.
+
+3-Pour lancer le programme, il faut:
+	-Ouvrir un termimal puis accèder au répertoire du dossier compressé ensuite  lancer la commande "make".
+
+4-Une fois l'execution faite le programme affiche "Veuillez selectionner un fichier " dans ce cas alors vous devez taper le nom d'un fichier existant .
