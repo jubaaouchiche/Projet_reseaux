@@ -10,9 +10,9 @@ préalablement sur un réseau Ethernet. Ce programme a été codé en python(3).
 
 L'archive contient : 
 
-1- Le fichier contenant le code source du projet qui est "analyser.py".
-2- Le fichier howto qui explique comment lancer le programme. 
-3- Quelques fichiers (.txt) contenant les trames à analyser et  la sortie de la fonction(resultatanalyser).
+- Le fichier contenant le code source du projet qui est "analyser.py".
+- Le fichier howto qui explique comment lancer le programme. 
+- Quelques fichiers (.txt) contenant les trames à analyser et  la sortie de la fonction(resultatanalyser).
 
 ### Exécution
 
@@ -20,9 +20,8 @@ Tout d'abord il faut télécharger l'archive du projet.
 Ensuite le décompresser.
 
 Pour lancer le programme, il faut:
-	-Ouvrir un termimal puis accèder au répertoire du dossier compressé ensuite  lancer la commande "make".
-
-Une fois l'execution faite le programme affiche "Veuillez selectionner un fichier " dans ce cas alors vous devez taper le nom d'un fichier existant .
+- Ouvrir un termimal puis accèder au répertoire du dossier compressé ensuite  lancer la commande "make".
+- Une fois l'execution faite le programme affiche "Veuillez selectionner un fichier " dans ce cas alors vous devez taper le nom d'un fichier existant .
 
 ## Résultat
 
@@ -99,6 +98,5 @@ Si le numéro du protocol encapsulé dans le datagramme IP est égal à 17 en de
 
 
 #4-Couche Application :DNS ET DHCP
-
 
 
