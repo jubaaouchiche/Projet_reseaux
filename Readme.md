@@ -32,7 +32,7 @@ Le programme analyse donc la(les) trace(s) donnée(s) dans le fichier passé en 
 - Le nombre de trames erronées.
 - Analyse des protocoles de chaque trame.
 
-## Les Protocoles + options supportés 
+## Les Protocoles + options supportées 
 
 #1-Couche 02 : Ethernet
 
