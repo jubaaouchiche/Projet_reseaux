@@ -1,0 +1,104 @@
+
+
+### Projet : analyseur de protocoles
+
+L’objectif de ce projet est de programmer un analyseur de protocoles réseau
+‘oﬄine’. Il prend en entrée un fichier trace contenant les octets capturés
+préalablement sur un réseau Ethernet. Ce programme a été codé en python(3).
+
+### Contenu 
+
+L'archive contient : 
+
+1- Le fichier contenant le code source du projet qui est "analyser.py".
+2- Le fichier howto qui explique comment lancer le programme. 
+3- Quelques fichiers (.txt) contenant les trames à analyser et  la sortie de la fonction(resultatanalyser).
+
+### Exécution
+
+Tout d'abord il faut télécharger l'archive du projet.
+Ensuite le décompresser.
+
+Pour lancer le programme, il faut:
+	-Ouvrir un termimal puis accèder au répertoire du dossier compressé ensuite  lancer la commande "make".
+
+Une fois l'execution faite le programme affiche "Veuillez selectionner un fichier " dans ce cas alors vous devez taper le nom d'un fichier existant .
+
+## Résultat
+
+Le programme analyse donc la(les) trace(s) donnée(s) dans le fichier passé en argument et renvoie un autre fichier qui contient le résultat de d'analyse :
+
+- Le nom du fichier passé en parametre. 
+- Le nombre de trames correctes.
+- Le nombre de trames erronées.
+- Analyse des protocoles de chaque trame.
+
+## Les Protocoles + options supportés 
+
+#1-Couche 02 : Ethernet
+
+- Adresse MAC Destination qui est sous format aa:bb:cc:dd:ee:ff
+- Adresse MAC Source qui est sous format aa:bb:cc:dd:ee:ff
+- Affiche le type du protocol :  qui sont ARP(0806) et IPV4 (0800).
+
+#2-Couche 03 :IP 
+
+#Protocole :IPV4
+
+Le programme traite que l'IPv4 il affiche ses champs :
+
+- Version(4).
+- Header Length : qui est la longueur de l'entete au max 60Bytes.
+- Les drapeaux :reserved bit, don't fragment, more fragments..
+- Total length : qui est la longueur totale du datagramme IP
+- Time to Live
+- Protocol: UDP encapsulé dans le datagramme
+- Header Checksum 
+- Source IP address 
+- Destination address 
+!! Dans ce programme on affiche pas le champs data/payload.
+
+
+
+#Options IPV4
+
+L'entete du datagramme IP contient des options ssi sa longueur est superieure à 20 octets en decimal, les options traitées :
+
+- End of Options List
+- Router Alert
+- Strict Source Route
+- No Operation 
+- Record Route
+- Loose Source Route
+
+
+#Protocol : ARP
+- Harware type, exemple Ethernet (1)
+- Protocol type, exemple IPv4 (0x8000)
+- Hardware size, pour ethernet : 6
+- Protocol size, pour IPv4 : 4
+- Opcode 
+- Sender Harware address
+- Sender Protocol address
+- Receiver Harware address
+- Receiver Protocol address
+
+
+
+
+
+#3-Couche 04 :UDP
+
+Si le numéro du protocol encapsulé dans le datagramme IP est égal à 17 en decimal, alors c'est UDP
+
+- Port source
+- Port destination
+- Longueur du packet
+- La valeur du checksum (unverified)
+
+
+
+#4-Couche Application :DNS ET DHCP
+
+
+
