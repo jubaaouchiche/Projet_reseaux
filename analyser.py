@@ -242,7 +242,7 @@ def IPVersion4(Trame):
 #-----------------------------------------------------------------------------------------------------OPTIONS IP-----------------------------------------------------------------------------------------------------
 
     
-    if (HeaderLength32 > 5):                                                                     #Si la longueur >20Bytes alors le Header IP contiens des otpions 
+    if (HeaderLength32 > 5):                             #Si la longueur >20Bytes alors le Header IP contiens des otpions 
 
         NmbrOctetsOptions = (HeaderLength32 - 5) * 4
         print("\tOptions: {} bytes".format(NmbrOctetsOptions))
@@ -254,7 +254,7 @@ def IPVersion4(Trame):
         while True : 
             if NmbrOctetsOptions == 0 : 
                 break
-            PremierOctetOption = Trame[off]                                                #Champ type de l'option
+            PremierOctetOption = Trame[off]              #Champ type de l'option
 
             if (int(PremierOctetOption, 16) == 0):
                 print("\t  IP Option  -  End of Options List (EOL)")
@@ -360,7 +360,7 @@ def IPVersion4(Trame):
                 NmbrOctetsOptions -= Length
     if (Protocol == 6):
         
-        TCP(Trame,int(HeaderLength32)*4)
+        print_s("Protocole TCP (non supporte !)")
 
     elif Protocol == 17 : 
         UDP(Trame,int(HeaderLength32)*4)
@@ -368,36 +368,6 @@ def IPVersion4(Trame):
     else:
         print("   "+Colors.BOLD+Colors.UNDERLINE+"Protocol numéro {} non supporté".format(Protocol)+Colors.ENDC)
         outputFile.write("   Protocol numéro {} non supporté\n".format(Protocol))
-
-#----------------------------------------------------------------------------------------------Couche04: UDP--------------------------------------------------------------------------------------------------------
-
-def UDP (Trame, LongueurIP):
-    """Cette fonction analyse le segment UDP affiche ses champs
-    Arguments :1)-> Trame à analyser,
-    				  2)-> Longueur de l'entete IP
-    """
-    Offset = 14+LongueurIP 
-
-    Source_port=Trame[Offset]+Trame[Offset+1]
-    Dest_port=Trame[Offset+2]+Trame[Offset+3]
-
-    Length = Trame[Offset+4]+Trame[Offset+5]
-    Checksum = Trame[Offset+6]+Trame[Offset+7]
-
-    print("   "+Colors.BOLD+Colors.UNDERLINE+"User Datagram Protocol: (UDP)"+Colors.ENDC)
-
-    print("\tSource Port: {}".format(int(Source_port,16)))
-    outputFile.write("\tSource Port: {}".format(int(Source_port,16)))
-
-    print("\tDestination Port : {}".format(int(Dest_port,16)))
-    outputFile.write("\tDestination Port : {}".format(int(Dest_port,16)))
-
-    print("\tLength: {}".format(int(Length,16)))
-    outputFile.write("\tLength: {}".format(int(Length,16)))
-
-    print("\tChecksum: 0x{} [unverified]".format(Checksum))
-    outputFile.write("\tChecksum: 0x{} [unverified]".format(Checksum))
-
 
 #---------------------------------------------------------------------------------------------ParseFile----------------------------------------------------------------------------------------------------------------
 
@@ -416,7 +386,8 @@ def FichierParse (file):
 
     for index in range(len(Lignes)):
 
-        Ligne = Lignes[index].strip().lower() 														#On enleve les espaces à gauche et à droite puis mettre les caracteres en minuscule
+        Ligne = Lignes[index].strip().lower()
+        #On enleve les espaces à gauche et à droite puis mettre les caracteres en minuscule
 
         if Ligne :
             Offset = Ligne.split(maxsplit=1)[0] 																						#Lecture  de l'offset du debut de ligne
@@ -492,7 +463,50 @@ def FichierParse (file):
             "lignes erronees" : LignesErronees,
             }
 
+#----------------------------------------------------------------------------------------------Couche04: UDP--------------------------------------------------------------------------------------------------------
+
+def UDP (Trame, LongueurIP):
+    """Cette fonction analyse le segment UDP affiche ses champs
+    Arguments :1)-> Trame à analyser,
+    				  2)-> Longueur de l'entete IP
+    """
+    Offset = 14+LongueurIP 
+
+    Source_port=Trame[Offset]+Trame[Offset+1]
+    detect_dns = int(Source_port,16) == 53
+    #si le port source est le port 53, alors le protocole utlise est dns
+
+    Dest_port=Trame[Offset+2]+Trame[Offset+3]
+
+    Length = Trame[Offset+4]+Trame[Offset+5]
+    Checksum = Trame[Offset+6]+Trame[Offset+7]
+
+    print("   "+Colors.BOLD+Colors.UNDERLINE+"User Datagram Protocol: (UDP)"+Colors.ENDC)
+
+    print("\tSource Port: {}".format(int(Source_port,16)))
+    outputFile.write("\tSource Port: {}".format(int(Source_port,16)))
+
+    print("\tDestination Port : {}".format(int(Dest_port,16)))
+    outputFile.write("\tDestination Port : {}".format(int(Dest_port,16)))
+
+    print("\tLength: {}".format(int(Length,16)))
+    outputFile.write("\tLength: {}".format(int(Length,16)))
+
+    print("\tChecksum: 0x{} [unverified]".format(Checksum))
+    outputFile.write("\tChecksum: 0x{} [unverified]".format(Checksum))
+    if detect_dns :
+        print("DNS packet detected... probably ?")
+        print("I mean i only know the source port is port 53.")
+        print("Beyond that i have no idea what i'm doing")
+        print("please send help")
+        DNS(Trame, LongueurIP + Length)
+    else:
+        print("no DNS detected... not that there is no dns though")
+        print("I just don't think there is")
+        print("but not quite sure bruh")
+
 #---------------------------------------------------------------------------------------------Couche07: DHCP&DNS------------------------------------------------------------------------------------------------
+
 
 class Colors:
 	OKGREEN = '\033[92m'
@@ -532,6 +546,8 @@ if __name__ == "__main__":
 
 
 
+
+
 def hex_to_bin(byte):
     """Cette fonction traduit UN octet de l'hexadecimal vers le binaire
     Argument : octet en hexa (str),
@@ -540,14 +556,15 @@ def hex_to_bin(byte):
     return '{:0>8}'.format(format(int(byte, 16), 'b'))
     
 
-def DNS(trame, length_placeholder):
+def DNS(trame, dns_start):
     """Cette fonction analyse le segment DNS et affiche ses champs
     Argument : 1)-> trame a analyser,
-    				  2)-> la longueur de l'entete.
+    				  2)-> la position de l'entete dans la trame
     """
 
-    offset = length_placeholder
-    
+    offset = dns_start
+
+    #definition des variables de l'entete dns
     id = hex_to_bin(trame[offset]) + hex_to_bin(trame[offset+1])
 
     offset += 2
@@ -557,7 +574,7 @@ def DNS(trame, length_placeholder):
     opcode_dict = {0 : "Query", 1 : "Iquery", 2 : "Status"}
     opcode = "NON PRIS EN CHARGE"
     if opcode_int in opcode_dict.keys():
-        opcode = opcode_dict[]
+        opcode = opcode_dict[opcode_int]
 
     aa = current_byte[5:6]
 
@@ -580,18 +597,18 @@ def DNS(trame, length_placeholder):
         rcode = rcode_dict[rcode_int]
     
     offset += 1
-    qdcount = int(trame[offset] + trame[offset+1], 16)
+    qdcount = int(trame[offset] + trame[offset+1], 16)  #nombre de questions
 
     offset += 2
-    ancount = int(trame[offset] + trame[offset+1], 16)
+    ancount = int(trame[offset] + trame[offset+1], 16)  #nombre de reponses
 
     offset += 2
-    nscount = int(trame[offset] + trame[offset+1], 16)
+    nscount = int(trame[offset] + trame[offset+1], 16)  #nombre de authority
 
     offset += 2
-    arcount = int(trame[offset] + trame[offset+1], 16)
+    arcount = int(trame[offset] + trame[offset+1], 16)  #nombre de resource records
 
-    #print DNS results
+    #affichage de l'entete dns
     print_s("\tProtocole DNS")
     print_s("\t\tId : {}".format(id))
     print_s("\t\tQr : ".format(qr))
@@ -607,44 +624,112 @@ def DNS(trame, length_placeholder):
     print_s("\t\tNscount : ".format(nscount))
     print_s("\t\tArcount : ".format(arcount))
 
-    #  /!\
-    #  PAS ENCORE FAIT : decodage des sections Questions,
-    #  Réponses, Autorités et Additionnelles
-    #  /!\
+    offset += 2
+    #DNS questions :
+    print_s("\n\t\tQuestions :")
+    for i in range(qdcount):
+        l_octet = int(trame[offset], 16)
+        qname_count = 1
+        qname = ""
+        while l_octet != 0:
+            label = trame[offset+1 : offset+1+l_octet]
+            qname += "\t\t\t\t"+str(qname_count)+" | label : "+str(int(label,16))+"(longueur : "+str(l_octet)+")\n"
+            qname_count += 1
+            offset += l_octet + 1
+            l_octet = int(trame[offset], 16)
+        offset += 1
 
+        qtype = trame[offset] + trame[offset+1]
+        offset += 2
+
+        qclass = trame[offset] + trame[offset+1]
+        offset += 2
+        print_s("\t\t\tQname : \n" + qname)
+        print_s("\t\t\tQtype : " + qtype)
+        print_s("\t\t\tQclass : " + qclass)
+    
+    #DNS answers
+    print_s("\n\t\tReponses :")
+    offset = dns_resource_record_analysis(trame, 
+        ancount, dns_start, offset)
+
+    #authorities
+    print_s("\n\t\tAutorites :")
+    offset = dns_resource_record_analysis(trame, 
+        nscount, dns_start, offset)
+
+    #additionals
+    print_s("\n\t\tAdditionnelles :")
+    offset = dns_resource_record_analysis(trame, 
+        arcount, dns_start, offset)
+
+def dns_resource_record_analysis(trame, count, header_start, offset):
+    for i in range(count):
+        aname = ""
+        print_s("\t\t\tResource record "+str(i)+" :")
+        is_pointer = hex_to_bin(trame[offset])
+        if is_pointer[:2] == "11":
+            # we have a pointer to a label
+            aname = read_dns_pointer(trame, header_start, offset)
+            offset += 2
+        else:
+            # we just have a label
+            dns_name = read_dns_name(trame, offset)
+            aname = dns_name[0]
+            offset += dns_name[1]
+
+        atype = trame[offset] + trame[offset+1]
+        offset += 2
+
+        aclass = trame[offset] + trame[offset+1]
+        offset += 2
+
+        ttl = str(int(trame[offset] + trame[offset+1] + trame[offset+2] + trame[offset+3], 16))
+        offset += 4
+
+        rdlength = str(int(trame[offset] + trame[offset+1], 16))
+        offset += 2
+
+        rdata = ""
+        for i in range(rdlength):
+            offset += 1
+            rdata += ascii(int(trame[offset], 16))
+
+
+        print_s("\t\t\tName : \n\t\t\t" + aname)
+        print_s("\t\t\tType : " + atype)
+        print_s("\t\t\tClass : " + aclass)
+        print_s("\t\t\tTTL : "+ttl)
+        print_s("\t\t\tRdlength : "+rdlength)
+        print_s("\t\t\tRdata : \n\t\t\t"+rdata)
+
+def read_dns_pointer(trame, dns_start, offset):
+    o = hex_to_bin(trame[offset] + trame[offset+1])
+    pointer_offset = int(o[2:], 2) + dns_start
+    return read_dns_name(trame, pointer_offset)[0]
+
+
+def read_dns_name(trame, offset):
+    c = trame[offset]
+    name = ""
+    l = 1
+    word_len = 0
+    while c != '00':
+        if word_len == 0:
+            word_len = int(c, 16)
+            if name != "":
+                name += "2e"
+        else:
+            word_len -= 1
+            name += c
+        offset += 1
+        c = trame[offset]
+        l += 1
+    name.decode("hex")
+    return [name, l]
 
 def print_s(to_print):
     print(to_print)
-    outputFile.write(to_print)
+    outputFile.write(to_print + "\n")
 
 
-
-
-
-"""
-
-##########################
-###   MAIN PROGRAM :   ###
-
-
-#   print(format(int(value, 16), 'b'))
-
-
-print("\nAnalyser.py : start\n")
-
-outputFile = open("outputFile", "w")
-file_name = input("Fichier à analyser : ")
-print(file_name)
-f = open(file_name, "r")
-trames = FichierParse(f)
-print(trames)
-
-Couches(trames)
-f.close()
-outputFile.close()
-
-print("\nAnalyser.py : end\n")
-
-###        END         ###
-##########################
-"""
