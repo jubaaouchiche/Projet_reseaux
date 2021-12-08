@@ -473,10 +473,10 @@ def UDP (Trame, LongueurIP):
     Offset = 14+LongueurIP 
 
     Source_port=Trame[Offset]+Trame[Offset+1]
-    detect_dns = int(Source_port,16) == 53
-    #si le port source est le port 53, alors le protocole utlise est dns
 
     Dest_port=Trame[Offset+2]+Trame[Offset+3]
+    detect_dns = int(Source_port,16) == 53 or int(Dest_port, 16) == 53
+    #si le port source est le port 53, alors le protocole utlise est dns
 
     Length = Trame[Offset+4]+Trame[Offset+5]
     Checksum = Trame[Offset+6]+Trame[Offset+7]
@@ -495,58 +495,102 @@ def UDP (Trame, LongueurIP):
     print("\tChecksum: 0x{} [unverified]".format(Checksum))
     outputFile.write("\tChecksum: 0x{} [unverified]".format(Checksum))
     if detect_dns :
-        print("DNS packet detected... probably ?")
-        print("I mean i only know the source port is port 53.")
-        print("Beyond that i have no idea what i'm doing")
-        print("please send help")
-        DNS(Trame, LongueurIP + Length)
-    else:
-        print("no DNS detected... not that there is no dns though")
-        print("I just don't think there is")
-        print("but not quite sure bruh")
-
-#---------------------------------------------------------------------------------------------Couche07: DHCP&DNS------------------------------------------------------------------------------------------------
+        dns(Trame, 14 + LongueurIP + 8)
 
 
-class Colors:
-	OKGREEN = '\033[92m'
-	UNDERLINE = '\033[4m'
-	WARNING = '\033[93m'
-	FAIL = '\033[91m'
-	BOLD = '\033[1m'
-	ENDC = '\033[0m'
 
-outputFile = open("resultatAnalyseur.txt", "w")
-
-def main():
-    while True:
-        fileName = input(Colors.BOLD+"Entrer le nom du fichier contenant la(les) Trame(s) : "+Colors.ENDC)
-        try:
-            file = open(fileName)
-        except:
-            print("Fichier non existant !! ")
+def dns_resource_record_analysis(trame, count, header_start, offset):
+    """Cette fonction analyse un champ resource record de la section dns
+    Arguments :1)-> Trame à analyser,
+                    2)-> nombre de champs
+                        3)-> debut du header
+                            4)-> offset actuel
+    """
+    for i in range(count):
+        aname = ""
+        print_s("\tResource record "+str(i)+" :")
+        is_pointer = hex_to_bin(trame[offset])
+        if is_pointer[:2] == "11":
+            # we have a pointer to a label
+            aname = read_dns_pointer(trame, header_start, offset)
+            offset += 2
         else:
-            break
-    outputFile.write("Trame(s) extraite(s) du fichier : "+fileName+"\n")
-    Dico = FichierParse(file)
-    Couches(Dico)
-    outputFile.close()
+            # we just have a label
+            dns_name = read_dns_name(trame, header_start, offset)
+            aname = dns_name[0]
+            offset += dns_name[1]
+        atype = trame[offset] + trame[offset+1]
+        offset += 2
+
+        aclass = trame[offset] + trame[offset+1]
+        offset += 2
+
+        ttl = str(int(trame[offset] + trame[offset+1] + trame[offset+2] + trame[offset+3], 16))
+        offset += 4
+
+        rdlength = str(int(trame[offset] + trame[offset+1], 16))
+        offset += 2
+        rdata = ""
+        i = 0
+        while i < int(rdlength):
+            i += 1
+            is_pointer = hex_to_bin(trame[offset])
+            is_p = is_pointer[:2]
+            if int(trame[offset], 16) == 0:
+                rdata += " "
+            if is_p == "11" or (is_p == "00" and int(trame[offset]+trame[offset+1], 16)!=0):
+                l = read_dns_name(trame, header_start, offset)
+                offset += l[1]
+                i += l[1]
+                rdata += l[0]
+            else:
+                rdata += "   \n\t"
+                for j in range(i, int(rdlength)):
+                    if (j-i)%20 == 0 and (j-i)!=0:
+                        rdata += "\n\t"
+                    rdata += trame[offset]
+                    offset += 1
+                i = 999999
+        
+        print_s("\tName : \n\t" + aname)
+        print_s("\tType : " + atype)
+        print_s("\tClass : " + aclass)
+        print_s("\tTTL : "+ttl)
+        print_s("\tRdlength : "+rdlength)
+        print_s("\tRdata : \n\t"+rdata)
+
+    return offset
+
+def read_dns_pointer(trame, dns_start, offset):
+    o = hex_to_bin(trame[offset] + trame[offset+1])
+    pointer_offset = int(o[2:], 2) + dns_start
+    return read_dns_name(trame, dns_start, pointer_offset)[0]
 
 
-
-if __name__ == "__main__":
-    main()
-
-
-
-
-
-
-
-
-
-
-
+def read_dns_name(trame, header_start, offset):
+    is_pointer = hex_to_bin(trame[offset])
+    if is_pointer[:2] == "11":
+        # we have a pointer to a label
+        aname = read_dns_pointer(trame, header_start, offset)
+        return [aname, offset+2]
+    c = trame[offset]
+    name = ""
+    l = 1
+    word_len = 0
+    while c != '00':
+        if word_len == 0:
+            word_len = int(c, 16)
+            if name != "":
+                name += "2e"
+        else:
+            word_len -= 1
+            name += c
+        offset += 1
+        c = trame[offset]
+        l += 1
+    n_array = bytes.fromhex(name)
+    n_str = n_array.decode()
+    return [n_str, l]
 
 def hex_to_bin(byte):
     """Cette fonction traduit UN octet de l'hexadecimal vers le binaire
@@ -554,18 +598,21 @@ def hex_to_bin(byte):
     Retourne : octet en binaire (str)
     """
     return '{:0>8}'.format(format(int(byte, 16), 'b'))
-    
 
-def DNS(trame, dns_start):
+def print_s(to_print):
+    print(to_print)
+    outputFile.write(to_print + "\n")
+
+def dns(trame, dns_start):
     """Cette fonction analyse le segment DNS et affiche ses champs
     Argument : 1)-> trame a analyser,
     				  2)-> la position de l'entete dans la trame
     """
-
+    print_s("   "+Colors.BOLD+Colors.UNDERLINE+"Domain Name System : (DNS)"+Colors.ENDC)
     offset = dns_start
 
     #definition des variables de l'entete dns
-    id = hex_to_bin(trame[offset]) + hex_to_bin(trame[offset+1])
+    id = "0x" + trame[offset] + trame[offset+1]
 
     offset += 2
     current_byte = hex_to_bin(trame[offset])
@@ -609,127 +656,94 @@ def DNS(trame, dns_start):
     arcount = int(trame[offset] + trame[offset+1], 16)  #nombre de resource records
 
     #affichage de l'entete dns
-    print_s("\tProtocole DNS")
-    print_s("\t\tId : {}".format(id))
-    print_s("\t\tQr : ".format(qr))
-    print_s("\t\tOpcode : ".format(opcode))
-    print_s("\t\tAuthoritative Answer : ".format(aa))
-    print_s("\t\tTc : ".format(tc))
-    print_s("\t\tRd : ".format(rd))
-    print_s("\t\tRa : ".format(ra))
-    print_s("\t\tZ : ".format(z))
-    print_s("\t\tRcode : ".format(rcode))
-    print_s("\t\tQdcount : ".format(qdcount))
-    print_s("\t\tAncount : ".format(ancount))
-    print_s("\t\tNscount : ".format(nscount))
-    print_s("\t\tArcount : ".format(arcount))
+    print_s("\tIdentification : {}".format(id))
+    print_s("\tQr : {}".format(qr))
+    print_s("\tOpcode : {}".format(opcode))
+    print_s("\tAuthoritative Answer : {}".format(aa))
+    print_s("\tTc : {}".format(tc))
+    print_s("\tRd : {}".format(rd))
+    print_s("\tRa : {}".format(ra))
+    print_s("\tZ : {}".format(z))
+    print_s("\tRcode : {}".format(rcode))
+    print_s("\tQdcount : {}".format(qdcount))
+    print_s("\tAncount : {}".format(ancount))
+    print_s("\tNscount : {}".format(nscount))
+    print_s("\tArcount : {}".format(arcount))
 
     offset += 2
     #DNS questions :
-    print_s("\n\t\tQuestions :")
+    print_s("\n\t"+Colors.BOLD+"Questions :"+Colors.ENDC)
     for i in range(qdcount):
-        l_octet = int(trame[offset], 16)
-        qname_count = 1
         qname = ""
-        while l_octet != 0:
-            label = trame[offset+1 : offset+1+l_octet]
-            qname += "\t\t\t\t"+str(qname_count)+" | label : "+str(int(label,16))+"(longueur : "+str(l_octet)+")\n"
-            qname_count += 1
-            offset += l_octet + 1
-            l_octet = int(trame[offset], 16)
-        offset += 1
+        res_n = read_dns_name(trame, dns_start, offset)
+        qname = res_n[0]
+        offset += res_n[1]
 
         qtype = trame[offset] + trame[offset+1]
         offset += 2
 
         qclass = trame[offset] + trame[offset+1]
         offset += 2
-        print_s("\t\t\tQname : \n" + qname)
-        print_s("\t\t\tQtype : " + qtype)
-        print_s("\t\t\tQclass : " + qclass)
+        print_s("\tQname : " + qname)
+        print_s("\tQtype : " + qtype)
+        print_s("\tQclass : " + qclass)
     
     #DNS answers
-    print_s("\n\t\tReponses :")
-    offset = dns_resource_record_analysis(trame, 
-        ancount, dns_start, offset)
+    print_s("\n\t"+Colors.BOLD+"Reponses :"+Colors.ENDC)
+    old_offset = offset
+    offset = dns_resource_record_analysis(trame, ancount, dns_start, offset+0)
+    if old_offset == offset :
+        print_s("\tNone")
 
     #authorities
-    print_s("\n\t\tAutorites :")
-    offset = dns_resource_record_analysis(trame, 
-        nscount, dns_start, offset)
+    print_s("\n\t"+Colors.BOLD+"Autorites :"+Colors.ENDC)
+    old_offset = offset
+    offset = dns_resource_record_analysis(trame, nscount, dns_start, offset)
+    if old_offset == offset :
+        print_s("\tNone")
 
     #additionals
-    print_s("\n\t\tAdditionnelles :")
-    offset = dns_resource_record_analysis(trame, 
-        arcount, dns_start, offset)
+    print_s("\n\t"+Colors.BOLD+"Additionnelles :"+Colors.ENDC)
+    old_offset = offset
+    offset = dns_resource_record_analysis(trame, arcount, dns_start, offset)
+    if old_offset == offset :
+        print_s("\tNone")
 
-def dns_resource_record_analysis(trame, count, header_start, offset):
-    for i in range(count):
-        aname = ""
-        print_s("\t\t\tResource record "+str(i)+" :")
-        is_pointer = hex_to_bin(trame[offset])
-        if is_pointer[:2] == "11":
-            # we have a pointer to a label
-            aname = read_dns_pointer(trame, header_start, offset)
-            offset += 2
+
+#---------------------------------------------------------------------------------------------Couche07: DHCP&DNS------------------------------------------------------------------------------------------------
+
+
+class Colors:
+	OKGREEN = '\033[92m'
+	UNDERLINE = '\033[4m'
+	WARNING = '\033[93m'
+	FAIL = '\033[91m'
+	BOLD = '\033[1m'
+	ENDC = '\033[0m'
+
+outputFile = open("resultatAnalyseur.txt", "w")
+
+def main():
+    while True:
+        fileName = input(Colors.BOLD+"Entrer le nom du fichier contenant la(les) Trame(s) : "+Colors.ENDC)
+        try:
+            file = open(fileName)
+        except:
+            print("Fichier non existant !! ")
         else:
-            # we just have a label
-            dns_name = read_dns_name(trame, offset)
-            aname = dns_name[0]
-            offset += dns_name[1]
-
-        atype = trame[offset] + trame[offset+1]
-        offset += 2
-
-        aclass = trame[offset] + trame[offset+1]
-        offset += 2
-
-        ttl = str(int(trame[offset] + trame[offset+1] + trame[offset+2] + trame[offset+3], 16))
-        offset += 4
-
-        rdlength = str(int(trame[offset] + trame[offset+1], 16))
-        offset += 2
-
-        rdata = ""
-        for i in range(rdlength):
-            offset += 1
-            rdata += ascii(int(trame[offset], 16))
+            break
+    outputFile.write("Trame(s) extraite(s) du fichier : "+fileName+"\n")
+    Dico = FichierParse(file)
+    Couches(Dico)
+    outputFile.close()
 
 
-        print_s("\t\t\tName : \n\t\t\t" + aname)
-        print_s("\t\t\tType : " + atype)
-        print_s("\t\t\tClass : " + aclass)
-        print_s("\t\t\tTTL : "+ttl)
-        print_s("\t\t\tRdlength : "+rdlength)
-        print_s("\t\t\tRdata : \n\t\t\t"+rdata)
 
-def read_dns_pointer(trame, dns_start, offset):
-    o = hex_to_bin(trame[offset] + trame[offset+1])
-    pointer_offset = int(o[2:], 2) + dns_start
-    return read_dns_name(trame, pointer_offset)[0]
+if __name__ == "__main__":
+    main()
 
 
-def read_dns_name(trame, offset):
-    c = trame[offset]
-    name = ""
-    l = 1
-    word_len = 0
-    while c != '00':
-        if word_len == 0:
-            word_len = int(c, 16)
-            if name != "":
-                name += "2e"
-        else:
-            word_len -= 1
-            name += c
-        offset += 1
-        c = trame[offset]
-        l += 1
-    name.decode("hex")
-    return [name, l]
 
-def print_s(to_print):
-    print(to_print)
-    outputFile.write(to_print + "\n")
+
 
 
