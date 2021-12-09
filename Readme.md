@@ -6,22 +6,22 @@ L’objectif de ce projet est de programmer un analyseur de protocoles réseau
 ‘oﬄine’. Il prend en entrée un fichier trace contenant les octets capturés
 préalablement sur un réseau Ethernet. Ce programme a été codé en python(3).
 
-### Contenu 
+### Archive
 
-L'archive contient : 
+
 
 - Le fichier contenant le code source du projet qui est "analyser.py".
 - Le fichier howto qui explique comment lancer le programme. 
 - Quelques fichiers (.txt) contenant les trames à analyser et  la sortie de la fonction(resultatanalyser).
 
-### Exécution
+### Lacement du programme
 
-Tout d'abord il faut télécharger l'archive du projet.
-Ensuite le décompresser.
+1-Tout d'abord il faut installer python3.
 
-Pour lancer le programme, il faut:
-- Ouvrir un termimal puis accèder au répertoire du dossier compressé ensuite  lancer la commande "make".
-- Une fois l'execution faite le programme affiche "Veuillez selectionner un fichier " dans ce cas alors vous devez taper le nom d'un fichier existant .
+2-Pour lancer le programme, il faut:
+	-Ouvrir un termimal puis accèder au répertoire du dossier compressé ensuite  lancer la commande "make".
+
+3-Une fois l'execution faite le programme affiche "Veuillez selectionner un fichier " dans ce cas alors vous devez taper le nom d'un fichier existant dans le meme repertoire.
 
 ## Résultat
 
