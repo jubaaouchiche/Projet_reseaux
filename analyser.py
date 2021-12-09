@@ -29,7 +29,7 @@ def FichierParse (file):
             PositionLignes[Ligne] = ind
             LignesValides.append(Ligne) 																								
         else:
-            print("Ligne removed  :  ", Lignes[ind])
+            print("Ligne supprimee  :  ", Lignes[ind])
 
     TramesCorrectes = []
     TramesErronees = []
@@ -561,25 +561,25 @@ def DHCP(trame,idd):
     if (int(trame[idd],16)==6):
         print_s("\t\t DHCP :NACK (1)")
     if (int(trame[idd],16)== 7):
-        Dname(trame,idd,l)
+        Dnom(trame,idd,l)
 	
     elif (i==60):
         print_s("\t\t\t Vendor class iidentifier : ")
-        Dname(trame,idd,l)
+        Dnom(trame,idd,l)
     elif (i==1):
         print_s("\t\t\t Subnet MASK : ")
-        IPDHCP(trame,idd,l)
+        DhcpIP(trame,idd,l)
     elif (i==2):
         print_s("\t\t\t Routeur : ")
-        IPDHCP(trame,idd,l)
+        DhcpIP(trame,idd,l)
     elif (i==6):
         print_s("\t\t\t DNS : ")
-        IPDHCP(trame,idd,l-4)
+        DhcpIP(trame,idd,l-4)
         print_s("\t\t\t DNS : ")
-        IPDHCP(trame,idd+4,l-4)
+        DhcpIP(trame,idd+4,l-4)
     elif (i==15):
         print_s("\t\t\t Domain name : ")
-        Dname(trame,idd,l-1)
+        Dnom(trame,idd,l-1)
     elif (i==51):
         print_s("\t\t\t Adress lease time : ")
         temp=' '
@@ -588,7 +588,7 @@ def DHCP(trame,idd):
         print_s("("+str(int(temp,16))+"s)")
     elif (i==54):
         print_s("\t\t\t DHCP SERVER Identifier : ")
-        IPDHCP(trame,idd,l)
+        DhcpIP(trame,idd,l)
     else:
         print_s("\t\t Option DHCP Non traite")	
     if (int(trame[idd],16)==6):
@@ -614,7 +614,7 @@ def DHCP(trame,idd):
         if (i==116):
             print_s("\t\t\t DHCP Auto Configuration :Auto Configure (1)")
 			
-def DName(trame,idd,l):
+def Dnom(trame,idd,l):
     temp =' '
     for i in trame[idd:idd+i]:
         temp+=i
@@ -624,7 +624,7 @@ def DName(trame,idd,l):
     hx=hx[:len(hx)]
     print_s(str(hx))
 
-def IPDHCP(trame,idd,l):
+def DhcpIP(trame,idd,l):
     to_print = ""
     for i in trame[idd:idd+i-1]:
         to_print += (str(int(i,16)))
@@ -632,7 +632,7 @@ def IPDHCP(trame,idd,l):
     print_s(to_print + " " + str(int(trame[idd+(l-1)],16)))
     return idd+l
 	
-def MACDHCP(trame,idd,l):
+def DhcpMAC(trame,idd,l):
 	for i in trame[idd:idd+l-1]:
 		print_s(str(int(i,16)))
 		print_s(" : ")
@@ -667,7 +667,7 @@ def dns_resource_record_analysis(trame, count, header_start, offset):
             38  : "A6",
             18  : "AFSDB",
             5   : "CNAME",
-            39  : "DNAME",
+            39  : "Dnom",
             48  : "DNSKEY",
             43  : "DS",
             108 : "EUI48",
@@ -906,7 +906,7 @@ outputFile = open("resultatAnalyseur.txt", "w")
 
 def main():
     while True:
-        NomFichier = input(Colors.BOLD+"Entrer le nom du fichier contenant la(les) Trame(s) : "+Colors.ENDC)
+        NomFichier = input(Colors.BOLD+"Entrer le nom du fichier qui contient la(les) Trame(s) : "+Colors.ENDC)
         try:
             file = open(NomFichier)
         except:
