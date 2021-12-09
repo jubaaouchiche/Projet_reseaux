@@ -95,6 +95,10 @@ def FichierParse (file):
             "lignes erronees" : ListeDesLignesErronees,
             }
 
+
+#----------------------------------------------------------------------------------------------------Couche 02: Ethernet--------------------------------------------------------------------------------------------
+
+
 def Ethernet (Trame) : 
     """Cette fonction analyse la Trame Ethernet  et affiche ses champs 
     Argument : Trame à analyser
@@ -174,7 +178,7 @@ def SequenceOctetValide(SequenceOctet, NmbrOctets):
         if NmbrOctets == 0 :
             return True
         try:
-            int(SequenceOctet[dd], 16)                                                                                          #Recuperation de l'offset en position indd 
+            int(SequenceOctet[dd], 16)                                                                                           
         except:
             return False
 
@@ -189,7 +193,7 @@ def OffsetValide(OffsetCourant, OffsetPrecedant):
     Retourne : True si l'Offset courant est valide c'est à dire si il est superieur à l'Offset  precedant)
     """
     try:
-        Offs = int(OffsetCourant, 16) 																#L'offset en hexadecimal
+        Offs = int(OffsetCourant, 16) 																
     except:
         return False
     
@@ -284,7 +288,7 @@ def IPVersion4(Trame):
 #-----------------------------------------------------------------------------------------------------OPTIONS IP-----------------------------------------------------------------------------------------------------
 
     
-    if (HeaderLength32 > 5):                             #Si la longueur >20Bytes alors le Header IP contiens des otpions 
+    if (HeaderLength32 > 5):                             
 
         NmbrOctetsOptions = (HeaderLength32 - 5) * 4
         print("\t\tOptions: {} bytes".format(NmbrOctetsOptions))
@@ -296,8 +300,7 @@ def IPVersion4(Trame):
         while True : 
             if NmbrOctetsOptions == 0 : 
                 break
-            PremierOctetOption = Trame[off]              #Champ type de l'option
-
+            PremierOctetOption = Trame[off]              
             if (int(PremierOctetOption, 16) == 0):
                 print("\t\t  IP Option  -  End of Options List (EOL)")
                 outputFile.write("\t\t  IP Option  -  End of Options List (EOL)\n")
@@ -395,7 +398,7 @@ def IPVersion4(Trame):
                 off+=Length
                 NmbrOctetsOptions -= Length
             else:
-                print("\t\t\t  IP Option non supporté ")    # Toutes les options qui ne sont pas supportées ont un champs longueur
+                print("\t\t\t  IP Option non supporté ")    
                 outputFile.write("\t\t\t  IP Option non supporté \n")
                 Length = int(Trame[off+1], 16)
                 off+=Length
@@ -502,6 +505,7 @@ def Udp (Trm, LongueurIP):
         dns(Trm, 14 + LongueurIP + 8)
 
 
+#-------------------------------------------------------------------------------------------------------Couche 07: DNS+DHCP-------------------------------------------------------------------------------------
 
 def dns_resource_record_analysis(trame, count, header_start, offset):
     """Cette fonction analyse un champ resource record de la section dns
@@ -940,7 +944,6 @@ def MACDHCP(trame,idd,l):
 	
 	
 	
-#---------------------------------------------------------------------------------------------Couche07: DHCP&DNS------------------------------------------------------------------------------------------------
 
 
 class Colors:
