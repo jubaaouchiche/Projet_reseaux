@@ -1,7 +1,185 @@
 # Projet_reseaux:
 
 
+#--------------------------------------------------------------------------------------------------------Fichier Parse------------------------------------------------------------------------------------------------
 
+def FichierParse (file):
+    """Cette fonction lit le fichier qui contenant les trames à analyser.
+    Argument :  un fichier dans le meme repertoire.
+    Retourne  un dictionnaire des trames correctes et de trames erronees et les lignes qui sont fausses dans les trames erronees .
+    
+    """
+    OffsetCourant = 0
+
+    Lignes = file.readlines()
+
+    LignesValides, PositionLignes = [], {}
+    
+
+    for ind in range(len(Lignes)):
+
+        Ligne = Lignes[ind].strip().lower()
+        #On enleve les espaces à gauche et à droite puis mettre les caracteres en minuscule
+
+        if Ligne :
+            Offset = Ligne.split(maxsplit=1)[0] 																						#Lecture  de l'offset du debut de ligne
+        else:
+            Offset = ""
+
+        if OffsetValide(Offset, OffsetCourant):
+            OffsetCourant = int(Offset, 16)
+            PositionLignes[Ligne] = ind
+            LignesValides.append(Ligne) 																								#On ajoute l'offset dans le tableau ssi il est valide
+        else:
+            print("Ligne supprimee  :  ", Lignes[ind])
+
+    TramesCorrectes = []
+    TramesErronees = []
+    ListeDesLignesErronees = []
+
+    for ind in range(len(LignesValides)):
+
+        OffsetCourant = int(LignesValides[ind].split(maxsplit=1)[0], 16)
+        if ind+1 == len(LignesValides) : 
+            OffsetSuivant = 0
+        else:
+            OffsetSuivant = int(LignesValides[ind+1].split(maxsplit=1)[0], 16)
+
+        if OffsetCourant == 0:
+            Trame = []
+            TrameValidee = True
+        
+        splittedLine = LignesValides[ind].split()
+
+        if OffsetSuivant != 0 :
+            NmbrOctetsSurLaLigne = OffsetSuivant - OffsetCourant
+
+            if SequenceOctetValide(splittedLine[1:], NmbrOctetsSurLaLigne) : 
+                Trame.extend(splittedLine[1:NmbrOctetsSurLaLigne+1])
+            else:
+                ListeDesLignesErronees.append(PositionLignes[LignesValides[index]])
+                TrameValidee = False
+        else: 
+            
+
+            if Trame[12]+Trame[13] == "0806":   
+                LongueurTrame = 60-14         
+            else :
+                if len(Trame) > 18:  
+                    LongueurTrame = int(Trame[16]+Trame[17], 16)
+                else:
+                    LongueurTrame = -1
+                    if len(splittedLine[1:]) > 18 - len(Trame) :  
+                        try:
+                            LongueurTrame = int(splittedLine[17-len(Trame)]+splittedLine[18-len(Trame)], 16)
+                        except: 
+                            TrameValidee = False
+                            ListeDesLignesErronees.append(PositionLignes[LignesValides[ind]])
+                            print("Champs longueur totale du datagramme IP érroné ligne erronée : numéro :", PositionLignes[LignesValides[ind]])
+            NmbrOctetsSurLaLigne = LongueurTrame + 14 - len(Trame)     									#LongueurTrame représente la longueur totale de la Trame
+                                                                    																			     
+            if SequenceOctetValide(splittedLine[1:], NmbrOctetsSurLaLigne) :
+                print(splittedLine[1:NmbrOctetsSurLaLigne+1])
+                Trame.extend(splittedLine[1:NmbrOctetsSurLaLigne+1])
+            else:
+                TrameValidee = False
+                ListeDesLignesErronees.append(PositionLignes[LignesValides[ind]])
+
+            if TrameValidee :
+                TramesCorrectes.append(Trame)
+            else:
+                TramesErronees.append(Trame)
+
+    return {"trames correctes" : TramesCorrectes,
+            "trames erronees" : TramesErronees,
+            "lignes erronees" : ListeDesLignesErronees,
+            }
+
+def Ethernet (Trame) : 
+    """Cette fonction analyse la Trame Ethernet  et affiche ses champs 
+    Argument : Trame à analyser
+    """
+    TypeDeProtocol = {"0800": "IPVersion4", "080": "", "0806" : "ARP"}
+    
+    AdrDestination = Trame[0]+":"+Trame[1]+":"+Trame[2]+":"+Trame[3]+":"+Trame[4]+":"+Trame[5]
+    AdrSource = Trame[6]+":"+Trame[7]+":"+Trame[8]+":"+Trame[9]+":"+Trame[10]+":"+Trame[11]
+    
+    typee = Trame[12]+Trame[13]
+    
+    print("   "+Colors.BOLD+Colors.UNDERLINE+"Protocol Ethernet:"+Colors.ENDC)
+    print("\t\tDestination: {}".format(AdrDestination))
+    print("\t\tSource: {}".format(AdrSource))
+
+    if(typee in TypeDeProtocol.keys()):
+    
+        print("\t\tType:  {}  (0x{}) ".format(TypeDeProtocol[typee], typee))
+        outputFile.write("\t\tType:  {}  (0x{}) \n".format(TypeDeProtocol[typee], typee))
+    
+    outputFile.write("   Protocol Ethernet:\n")
+    outputFile.write("\t\tDestination: {}\n".format(AdrDestination))
+    outputFile.write("\t\tSource: {}\n".format(AdrSource))
+   
+    if typee == "0800":
+        IPVersion4(Trame)
+    
+    elif typee == "0806":
+        ARP(Trame)
+    
+    else :
+        print(Colors.WARNING+Colors.BOLD+"   Protocol numéro {} non supporté".format(typee)+Colors.ENDC)
+        outputFile.write("   Protocol numéro {} non supporté\n".format(typee))
+
+def Layers (Dico):
+    
+    Trames = Dico["trames correctes"]
+    NmbrTrames = len(Trames)
+    
+    print(Colors.FAIL+Colors.BOLD+" Le nombre de trames erronees est : " + str(len(Dico["trames erronees"])) + Colors.ENDC)
+    outputFile.write(" Le nombre de trames erronees est : " + str(len(Dico["trames erronees"]))+"\n")
+
+    for ligne in Dico["lignes erronees"]:
+        print("\t\tLigne numero {} erronnée ou imcomplète".format(ligne))
+        outputFile.write("\t\tLigne numero {} erronnée ou imcomplète\n".format(ligne))
+
+    print(Colors.OKGREEN+Colors.BOLD+" Le nombre de trames correctes est : "+ str(NmbrTrames)+ Colors.ENDC+"\n")
+    outputFile.write(" Le nombre de trames correctes est : "+ str(NmbrTrames)+"\n"+"\n")
+
+    for Trame, i  in zip(Trames, range(len(Trames))) :
+        print(Colors.WARNING+" Trame numero {} : -- {} octets --".format(i, len(Trame))+Colors.ENDC)
+        outputFile.write(" Trame {} : -- {} octets --\n".format(i, len(Trame)))
+        try :
+            Ethernet(Trame)
+        except Exception as excep:
+            if hasattr(excep, 'message'):
+                print(excep.message)
+            else:
+                print(excep)
+            
+        print("\n")
+        outputFile.write("\n")
+
+
+    
+
+def SequenceOctetValide(SequenceOctet, NmbrOctets): 
+    """Cette fonction lit la sequences d'octets passée en arguments .
+    Arguments : 1)-> Sequence d'octets,
+    				   2)->  Nombre d'octets.
+    Retourne : True si tous les nombres d'octets sont des caracteres hexadecimaux, False sinon
+    """
+    fin = False
+    dd = 0
+    
+    while not fin :
+        if NmbrOctets == 0 :
+            return True
+        try:
+            int(SequenceOctet[dd], 16)                                                                                          #Recuperation de l'offset en position indd 
+        except:
+            return False
+
+        dd+=1
+        NmbrOctets-=1
 
 
 def OffsetValide(OffsetCourant, OffsetPrecedant):
@@ -19,148 +197,12 @@ def OffsetValide(OffsetCourant, OffsetPrecedant):
         return True
     
     return Offs >= OffsetPrecedant 
-    
-
-def SequenceOctetValide(SequenceOctet, NmbrOctets): 
-    """Cette fonction lit la sequences d'octets passée en arguments .
-    Arguments : 1)-> Sequence d'octets,
-    				   2)->  Nombre d'octets.
-    Retourne : True si tous les nombres d'octets sont des caracteres hexadecimaux, False sinon
-    """
-    fin = False
-    indd = 0
-    
-    while not fin :
-        if NmbrOctets == 0 :
-            return True
-        try:
-            int(SequenceOctet[indd], 16)                                                                                          #Recuperation de l'offset en position indd 
-        except:
-            return False
-
-        indd+=1
-        NmbrOctets-=1
-
-#-------------------------------------------------------------------------------------------Couche 02:Ethernet-----------------------------------------------------------------------------------------------------
-
-def Ethernet (Trame) : 
-    """Cette fonction analyse la Trame Ethernet  et affiche ses champs 
-    Argument : Trame à analyser
-    """
-    TypeDeProtocol = {"0800": "IPVersion4", "0805": "X.25 niveau 3", "0806" : "ARP"}
-    
-    AdrDestination = Trame[0]+":"+Trame[1]+":"+Trame[2]+":"+Trame[3]+":"+Trame[4]+":"+Trame[5]
-    AdrSource = Trame[6]+":"+Trame[7]+":"+Trame[8]+":"+Trame[9]+":"+Trame[10]+":"+Trame[11]
-    
-    typee = Trame[12]+Trame[13]
-    
-    print("   "+Colors.BOLD+Colors.UNDERLINE+"Protocol Ethernet:"+Colors.ENDC)
-    print("\tDestination: {}".format(AdrDestination))
-    print("\tSource: {}".format(AdrSource))
-
-    if(typee in TypeDeProtocol.keys()):
-    
-        print("\tType: {} (0x{}) ".format(TypeDeProtocol[typee], typee))
-        outputFile.write("\tType: {} (0x{}) \n".format(TypeDeProtocol[typee], typee))
-    
-    outputFile.write("   Protocol Ethernet:\n")
-    outputFile.write("\tDestination: {}\n".format(AdrDestination))
-    outputFile.write("\tSource: {}\n".format(AdrSource))
-   
-    if typee == "0800":
-        IPVersion4(Trame)
-    
-    elif typee == "0806":
-        ARP(Trame)
-    
-    else :
-        print(Colors.WARNING+Colors.BOLD+"  Protocol numéro {} non supporté".format(typee)+Colors.ENDC)
-        outputFile.write("  Protocol numéro {} non supporté\n".format(typee))
 
 
-def Couches (Dico):
-    
-    Trames = Dico["trames correctes"]
-    NmbrTrames = len(Trames)
-    
-    print(Colors.FAIL+Colors.BOLD+"Le nombre de trames erronees est : " + str(len(Dico["trames erronees"])) + Colors.ENDC)
-    outputFile.write("Le nombre de trames erronees est : " + str(len(Dico["trames erronees"]))+"\n")
-
-    for ligne in Dico["lignes erronees"]:
-        print("\tLigne numero {} erronnée ou imcomplète".format(ligne))
-        outputFile.write("\tLigne numero {} erronnée ou imcomplète\n".format(ligne))
-
-    print(Colors.OKGREEN+Colors.BOLD+"Le nombre de trames correctes est : "+ str(NmbrTrames)+ Colors.ENDC+"\n")
-    outputFile.write("Le nombre de trames correctes est : "+ str(NmbrTrames)+"\n"+"\n")
-
-    for Trame, i  in zip(Trames, range(len(Trames))) :
-        print(Colors.WARNING+"Trame numero {} : -- {} octets --".format(i, len(Trame))+Colors.ENDC)
-        outputFile.write("Trame {} : -- {} octets --\n".format(i, len(Trame)))
-        try :
-            Ethernet(Trame)
-        except Exception as excep:
-            if hasattr(excep, 'message'):
-                print(excep.message)
-            else:
-                print(excep)
-            
-        print("\n")
-        outputFile.write("\n")
-
-def ARP (Trame):
-    """Cette fonction analyse le datagramme ARP et ses champs
-    Argument : Trame à analyser
-    type du Hardware est Ethernet
-                 type du protocole est IPVersion4
-    """
-    print("   "+Colors.BOLD+Colors.UNDERLINE+"Adress Resolution Protocol:"+Colors.ENDC)
-    outputFile.write("   Adress Resolution Protocol:\n")
-    
-    Offset = 14  
-    
-    Hardware = Trame[Offset]+Trame[Offset+1]
-    Protocol = Trame[Offset+2]+Trame[Offset+3]
-    
-    Hardlen = Trame[Offset+4]
-    Protlen = Trame[Offset+5]
-    
-    Operation =  Trame[Offset+6]+Trame[Offset+7]
-    
-    Sha =  Trame[Offset+8]+":"+Trame[Offset+9]+":"+Trame[Offset+10]+":"+Trame[Offset+11]+":"+Trame[Offset+12]+":"+Trame[Offset+13]
-    Spa =  ".".join([str(int(oc, 16)) for oc in Trame[Offset+14:Offset+18]])
-    Tha =  Trame[Offset+18]+":"+Trame[Offset+19]+":"+Trame[Offset+20]+":"+Trame[Offset+21]+":"+Trame[Offset+22]+":"+Trame[Offset+23]
-    Tpa =  ".".join([str(int(oc, 16)) for oc in Trame[Offset+24:Offset+28]])
-
-    if   int(Hardware,16) == 1:  
-        print("\tHardware type: Ethernet (1)")
-        outputFile.write("\tHardware type: Ethernet (1)\n")
-        
-    if Protocol == "0800":
-        print("\tProtocol type: IPVersion4 (0x0800)") 
-        outputFile.write("\tProtocol type: IPVersion4 (0x0800)\n")
 
 
-    print("\tHardware size: {}".format(int(Hardlen,16)))
-    outputFile.write("\tHardware size: {}\n".format(int(Hardlen,16)))
 
-    print("\tProtocol size: {}".format(int(Protlen,16)))
-    outputFile.write("\tProtocol size: {}\n".format(int(Protlen,16)))
 
-    Opcode = {"0001" : "request (1)", "0002" : "reply (2)"}
-    print("\tOpcode: {}".format(Opcode[Operation]))
-
-    outputFile.write("\tOpcode: {}\n".format(Opcode[Operation]))
-    print("\tSender Hardware address: {}".format(Sha))
-
-    outputFile.write("\tSender Hardware address: {}\n".format(Sha))
-    print("\tSender Protocol adress: {}".format(Spa))
-
-    outputFile.write("\tSender Protocol adress: {}\n".format(Spa))
-    print("\tTarget Hardware address: {}".format(Tha))
-
-    outputFile.write("\tTarget Hardware address: {}\n".format(Tha))
-    print("\tTarget Protocol adress: {}".format(Tpa))
-    outputFile.write("\tTarget Protocol adress: {}\n".format(Tpa))
 
 #------------------------------------------------------------------------------------------------------Couches 3: IP--------------------------------------------------------------------------------------------------
 
@@ -184,60 +226,60 @@ def IPVersion4(Trame):
     TotalLength = Trame[Offset+2]+Trame[Offset+3]
     
 
-    Identification = Trame[Offset+4]+Trame[Offset+5]
-    FirstByte = format(int(Trame[Offset+6], 16), '08b')
-    SecondByte = format(int(Trame[Offset+7], 16), '08b')
-    ReservedBit = FirstByte[0]
-    DoNotFragment = FirstByte[1]
-    MoreFragment = FirstByte[2]
-    FragmentOffset = FirstByte[3:]+SecondByte
+    Id = Trame[Offset+4]+Trame[Offset+5]
+    PremierByte = format(int(Trame[Offset+6], 16), '08b')
+    DeuxiemeByte = format(int(Trame[Offset+7], 16), '08b')
+    ReservedBit = PremierByte[0]
+    DFragment = PremierByte[1]
+    MFragment = PremierByte[2]
+    FragOffset = PremierByte[3:]+DeuxiemeByte
 
     Ttl = Trame[Offset+8]
     Protocol = int(Trame[Offset+9], 16)
     
     HeaderChecksum =Trame[Offset+10]+Trame[Offset+11]
     
-    Source_addr= '.'.join([str(int(x,16)) for x in Trame[Offset+12:Offset+16]])
-    Dest_addr='.'.join([str(int(x,16)) for x in Trame[Offset+16:Offset+20]])
+    Srce_addr= '.'.join([str(int(x,16)) for x in Trame[Offset+12:Offset+16]])
+    Des_addr='.'.join([str(int(x,16)) for x in Trame[Offset+16:Offset+20]])
     
-    OptionsType = 1
+    OptionsTypes = 1
 
     print("   "+Colors.BOLD+Colors.UNDERLINE+"Internet Protocol Version 4:"+Colors.ENDC)
-    print("\t{} .... = Version: 4 ".format(format(int(Version, 16), '04b')))
-    print("\t.... {} = Header Length: {} bytes ({}) ".format(format(int(str(HeaderLength32), 16), '04b'),int(str(HeaderLength32),16)*4,HeaderLength32))
-    print("\tIdentification: 0x{} ({})".format(Identification,int(Identification,16)))
+    print("\t\t{} .... = Version: 4 ".format(format(int(Version, 16), '04b')))
+    print("\t\t.... {} = Header Length: {} bytes ({}) ".format(format(int(str(HeaderLength32), 16), '04b'),int(str(HeaderLength32),16)*4,HeaderLength32))
+    print("\t\tIdentification: 0x{} ({})".format(Id,int(Id,16)))
 
     Dic_not_set={"0":"Not set","1":"Set"}
 
-    print("\tFlags: 0x{} ".format(Trame[Offset+6]))
-    print("\t\t{}... .... = Reserved bit: {} ".format(ReservedBit,Dic_not_set[ReservedBit]))
-    print("\t\t.{}.. .... = Don't fragment: {} ".format(DoNotFragment,Dic_not_set[DoNotFragment]))
-    print("\t\t..{}. .... = More fragments: {} ".format(MoreFragment,Dic_not_set[MoreFragment]))
-    print("\tTotal Length: {}".format(int(TotalLength,16)))
-    print("\tTime to Live: {}".format(int(Ttl,16)))
+    print("\t\tFlags: 0x{} ".format(Trame[Offset+6]))
+    print("\t\t\t{}... .... = Reserved bit: {} ".format(ReservedBit,Dic_not_set[ReservedBit]))
+    print("\t\t\t.{}.. .... = Don't fragment: {} ".format(DFragment,Dic_not_set[DFragment]))
+    print("\t\t\t..{}. .... = More fragments: {} ".format(MFragment,Dic_not_set[MFragment]))
+    print("\t\tTotal Length: {}".format(int(TotalLength,16)))
+    print("\t\tTime to Live: {}".format(int(Ttl,16)))
 
     if(Protocol in Protocols.keys()):
-        print("\tProtocol: {} ({})".format(Protocols[Protocol],Protocol))
-        outputFile.write("\tProtocol: {} ({})\n".format(Protocols[Protocol],Protocol))
+        print("\t\tProtocol: {} ({})".format(Protocols[Protocol],Protocol))
+        outputFile.write("\t\tProtocol: {} ({})\n".format(Protocols[Protocol],Protocol))
 
-    print("\tHeader Checksum: 0x{}".format(HeaderChecksum))
-    print("\tSource Address: {}".format(Source_addr))
-    print("\tDestination Address: {}".format(Dest_addr))
+    print("\t\tHeader Checksum: 0x{}".format(HeaderChecksum))
+    print("\t\tSource Address: {}".format(Srce_addr))
+    print("\t\tDestination Address: {}".format(Des_addr))
 
 
     outputFile.write("   Internet Protocol Version 4:\n")
-    outputFile.write("\t{} .... = Version: 4 \n".format(format(int(Version, 16), '04b')))
-    outputFile.write("\t.... {} = Header Length: {} bytes ({}) \n".format(format(int(str(HeaderLength32), 16), '04b'),int(str(HeaderLength32),16)*4,HeaderLength32))
-    outputFile.write("\tIdentification: 0x{} ({})\n".format(Identification,int(Identification,16)))
-    outputFile.write("\tFlags: 0x{} \n".format(Trame[Offset+6]))
-    outputFile.write("\t\t{}... .... = Reserved bit: {} \n".format(ReservedBit,Dic_not_set[ReservedBit]))
-    outputFile.write("\t\t.{}.. .... = Don't fragment: {} \n".format(DoNotFragment,Dic_not_set[DoNotFragment]))
-    outputFile.write("\t\t..{}. .... = More fragments: {} \n".format(MoreFragment,Dic_not_set[MoreFragment]))
-    outputFile.write("\tTotal Length: {}\n".format(int(TotalLength,16)))
-    outputFile.write("\tTime to Live: {}\n".format(int(Ttl,16)))
-    outputFile.write("\tHeader Checksum: 0x{}\n".format(HeaderChecksum))
-    outputFile.write("\tSource Address: {}\n".format(Source_addr))
-    outputFile.write("\tDestination Address: {}\n".format(Dest_addr))
+    outputFile.write("\t\t{} .... = Version: 4 \n".format(format(int(Version, 16), '04b')))
+    outputFile.write("\t\t.... {} = Header Length: {} bytes ({}) \n".format(format(int(str(HeaderLength32), 16), '04b'),int(str(HeaderLength32),16)*4,HeaderLength32))
+    outputFile.write("\t\t\tIdentification: 0x{} ({})\n".format(Id,int(Id,16)))
+    outputFile.write("\t\tFlags: 0x{} \n".format(Trame[Offset+6]))
+    outputFile.write("\t\t\t{}... .... = Reserved bit: {} \n".format(ReservedBit,Dic_not_set[ReservedBit]))
+    outputFile.write("\t\t\t.{}.. .... = Don't fragment: {} \n".format(DFragment,Dic_not_set[DFragment]))
+    outputFile.write("\t\t\t..{}. .... = More fragments: {} \n".format(MFragment,Dic_not_set[MFragment]))
+    outputFile.write("\t\tTotal Length: {}\n".format(int(TotalLength,16)))
+    outputFile.write("\t\tTime to Live: {}\n".format(int(Ttl,16)))
+    outputFile.write("\t\tHeader Checksum: 0x{}\n".format(HeaderChecksum))
+    outputFile.write("\t\tSource Address: {}\n".format(Srce_addr))
+    outputFile.write("\t\tDestination Address: {}\n".format(Des_addr))
 
 #-----------------------------------------------------------------------------------------------------OPTIONS IP-----------------------------------------------------------------------------------------------------
 
@@ -245,7 +287,7 @@ def IPVersion4(Trame):
     if (HeaderLength32 > 5):                             #Si la longueur >20Bytes alors le Header IP contiens des otpions 
 
         NmbrOctetsOptions = (HeaderLength32 - 5) * 4
-        print("\tOptions: {} bytes".format(NmbrOctetsOptions))
+        print("\t\tOptions: {} bytes".format(NmbrOctetsOptions))
 
         outputFile.write("\tOptions: {} bytes\n".format(NmbrOctetsOptions))
 
@@ -257,69 +299,69 @@ def IPVersion4(Trame):
             PremierOctetOption = Trame[off]              #Champ type de l'option
 
             if (int(PremierOctetOption, 16) == 0):
-                print("\t  IP Option  -  End of Options List (EOL)")
-                outputFile.write("\t  IP Option  -  End of Options List (EOL)\n")
-                print("\t\tType: 0")
-                outputFile.write("\t\tType: 0\n")
+                print("\t\t  IP Option  -  End of Options List (EOL)")
+                outputFile.write("\t\t  IP Option  -  End of Options List (EOL)\n")
+                print("\t\t\tType: 0")
+                outputFile.write("\t\t\tType: 0\n")
                 off+=1
                 NmbrOctetsOptions -=1
             elif (int(PremierOctetOption, 16) == 1):
-                print("\t  IP Option  -  No Operation (NOP)")
-                outputFile.write("\t  IP Option  -  No Operation (NOP)\n")
-                print("\t\tType: 1")
+                print("\t\t  IP Option  -  No Operation (NOP)")
+                outputFile.write("\t\t  IP Option  -  No Operation (NOP)\n")
+                print("\t\t\tType: 1")
                 outputFile.write("\t\tType: 1\n")
                 off+=1
                 NmbrOctetsOptions -=1
             elif (int(PremierOctetOption, 16) == 7):
-                print("\t  IP Option  -  Record Route (RR)")
-                outputFile.write("\t  IP Option  -  Record Route (RR)\n")
+                print("\t\t  IP Option  -  Record Route (RR)")
+                outputFile.write("\t\t  IP Option  -  Record Route (RR)\n")
 
-                print("\t\tType: 7")
-                outputFile.write("\t\tType: 7\n")
+                print("\t\t\tType: 7")
+                outputFile.write("\t\t\tType: 7\n")
 
                 Length = int(Trame[off+1], 16)
-                print("\t\tLength: {}".format(Length))
+                print("\t\t\tLength: {}".format(Length))
 
-                outputFile.write("\t\tLength: {}\n".format(Length))
+                outputFile.write("\t\t\tLength: {}\n".format(Length))
 
                 Pointer = int(Trame[off+2], 16)
 
-                print("\t\tPointer: {}".format(Pointer))
-                outputFile.write("\t\tPointer: {}\n".format(Pointer))
+                print("\t\t\tPointer: {}".format(Pointer))
+                outputFile.write("\t\t\tPointer: {}\n".format(Pointer))
 
                 for i in range((Length-3)//4):
                     RR= '.'.join([str(int(x,16)) for x in Trame[off+3+i*4:off+7+i*4]])
-                    print("\t\tRecorded Route: {}".format(RR))
-                    outputFile.write("\t\tRecorded Route: {}\n".format(RR))
+                    print("\t\t\tRecorded Route: {}".format(RR))
+                    outputFile.write("\t\t\tRecorded Route: {}\n".format(RR))
                 
                 off+=Length
                 NmbrOctetsOptions -= Length
 
             elif (int(PremierOctetOption, 16) == 131):
-                print("\t  IP Option  -  Loose Source Route (LSR)")
-                outputFile.write("\t  IP Option  -  Loose Source Route (LSR)\n")
+                print("\t\t  IP Option  -  Loose Source Route (LSR)")
+                outputFile.write("\t\t  IP Option  -  Loose Source Route (LSR)\n")
 
-                print("\t\tType: 131")
-                outputFile.write("\t\tType: 131\n")
+                print("\t\t\tType: 131")
+                outputFile.write("\t\t\tType: 131\n")
 
                 Length = int(Trame[off+1], 16)
                 print("\t\tLength: {}".format(Length))
                 outputFile.write("\t\tLength: {}\n".format(Length))
                 Pointer = int(Trame[off+2], 16)
 
-                print("\t\tPointer: {}".format(Pointer))
-                outputFile.write("\t\tPointer: {}\n".format(Pointer))
+                print("\t\t\tPointer: {}".format(Pointer))
+                outputFile.write("\t\t\tPointer: {}\n".format(Pointer))
 
                 for i in range((Length-3)//4):
                     Route= '.'.join([str(int(x,16)) for x in Trame[off+3+i*4:off+7+i*4]])
-                    print("\t\tRoute: {}".format(Route)) 
-                    outputFile.write("\t\tRoute: {}\n".format(Route))
+                    print("\t\t\tRoute: {}".format(Route)) 
+                    outputFile.write("\t\t\tRoute: {}\n".format(Route))
                 off+=Length
                 NmbrOctetsOptions -= Length
 
             elif (int(PremierOctetOption, 16) == 137):
-                print("\t  IP Option  -  Strict Source Route (SSR)")
-                outputFile.write("\t  IP Option  -  Strict Source Route (SSR)\n")
+                print("\t\t  IP Option  -  Strict Source Route (SSR)")
+                outputFile.write("\t\t  IP Option  -  Strict Source Route (SSR)\n")
 
                 print("\t\tType: 137")
                 outputFile.write("\t\tType: 137\n")
@@ -329,32 +371,32 @@ def IPVersion4(Trame):
                 outputFile.write("\t\tLength: {}\n".format(Length))
                 Pointer = int(Trame[off+2], 16)
 
-                print("\t\tPointer: {}".format(Pointer))
-                outputFile.write("\t\tPointer: {}\n".format(Pointer))
+                print("\t\t\tPointer: {}".format(Pointer))
+                outputFile.write("\t\t\tPointer: {}\n".format(Pointer))
 
                 for i in range((Length-3)//4):
                     Route= '.'.join([str(int(x,16)) for x in Trame[off+3+i*4:off+7+i*4]])
-                    print("\t\tRoute: {}".format(Route)) 
-                    outputFile.write("\t\tRoute: {}\n".format(Route)) 
+                    print("\t\t\tRoute: {}".format(Route)) 
+                    outputFile.write("\t\t\tRoute: {}\n".format(Route)) 
                 off+=Length
                 NmbrOctetsOptions -= Length
 
             elif (int(PremierOctetOption, 16) == 148):
-                print("\t  IP Option  -  Router Alert ")
-                outputFile.write("\t  IP Option  -  Router Alert \n")
-                print("\t\tType: 148")
-                outputFile.write("\t\tType: 148\n")
+                print("\t\t\t   IP Option  -  Router Alert ")
+                outputFile.write("\t\t\t  IP Option  -  Router Alert \n")
+                print("\t\t\tType: 148")
+                outputFile.write("\t\t\tType: 148\n")
                 Length = int(Trame[off+1], 16)
-                print("\t\tLength: {}".format(Length))
-                outputFile.write("\t\tLength: {}\n".format(Length))
+                print("\t\t\tLength: {}".format(Length))
+                outputFile.write("\t\t\tLength: {}\n".format(Length))
                 RouterAlert = int(Trame[off+2]+Trame[off+3], 16)
-                print("\t\tRouter Alert: Router shall examine packet ({})".format(RouterAlert))
-                outputFile.write("\t\tRouter Alert: Router shall examine packet ({})\n".format(RouterAlert))
+                print("\t\t\tRouter Alert: Router shall examine packet ({})".format(RouterAlert))
+                outputFile.write("\t\t\tRouter Alert: Router shall examine packet ({})\n".format(RouterAlert))
                 off+=Length
                 NmbrOctetsOptions -= Length
             else:
-                print("\t  IP Option non supporté ")    # Toutes les options qui ne sont pas supportées ont un champs longueur
-                outputFile.write("\t  IP Option non supporté \n")
+                print("\t\t\t  IP Option non supporté ")    # Toutes les options qui ne sont pas supportées ont un champs longueur
+                outputFile.write("\t\t\t  IP Option non supporté \n")
                 Length = int(Trame[off+1], 16)
                 off+=Length
                 NmbrOctetsOptions -= Length
@@ -363,139 +405,101 @@ def IPVersion4(Trame):
         print_s("Protocole TCP (non supporte !)")
 
     elif Protocol == 17 : 
-        UDP(Trame,int(HeaderLength32)*4)
+        Udp(Trame,int(HeaderLength32)*4)
 
     else:
         print("   "+Colors.BOLD+Colors.UNDERLINE+"Protocol numéro {} non supporté".format(Protocol)+Colors.ENDC)
         outputFile.write("   Protocol numéro {} non supporté\n".format(Protocol))
 
-#---------------------------------------------------------------------------------------------ParseFile----------------------------------------------------------------------------------------------------------------
 
-def FichierParse (file):
-    """Cette fonction lit le fichier qui contenant les trames à analyser.
-    Argument :  un fichier dans le meme repertoire.
-    Retourne  un dictionnaire des trames correctes et de trames erronees et les lignes qui sont fausses dans les trames erronees .
-    
+def ARP (Trame):
+    """Cette fonction analyse le datagramme ARP et ses champs
+    Argument : Trame à analyser
+    type du Hardware est Ethernet
+                 type du protocole est IPVersion4
     """
-    OffsetCourant = 0
-
-    Lignes = file.readlines()
-
-    LignesValides, PositionLignes = [], {}
+    print("   "+Colors.BOLD+Colors.UNDERLINE+"Adress Resolution Protocol:"+Colors.ENDC)
+    outputFile.write("   Adress Resolution Protocol:\n")
     
+    Offset = 14  
+    
+    Hardware = Trame[Offset]+Trame[Offset+1]
+    ProtocolType = Trame[Offset+2]+Trame[Offset+3]
+    
+    Hardlen = Trame[Offset+4]
+    Protlen = Trame[Offset+5]
+    
+    Oper =  Trame[Offset+6]+Trame[Offset+7]
+    
+    SenderHardwareAdress =  Trame[Offset+8]+":"+Trame[Offset+9]+":"+Trame[Offset+10]+":"+Trame[Offset+11]+":"+Trame[Offset+12]+":"+Trame[Offset+13]
+    SenderProtocolAdress =  ".".join([str(int(oc, 16)) for oc in Trame[Offset+14:Offset+18]])
+    TargetHardwareAddress =  Trame[Offset+18]+":"+Trame[Offset+19]+":"+Trame[Offset+20]+":"+Trame[Offset+21]+":"+Trame[Offset+22]+":"+Trame[Offset+23]
+    TargetProtocolAdress =  ".".join([str(int(oc, 16)) for oc in Trame[Offset+24:Offset+28]])
 
-    for index in range(len(Lignes)):
-
-        Ligne = Lignes[index].strip().lower()
-        #On enleve les espaces à gauche et à droite puis mettre les caracteres en minuscule
-
-        if Ligne :
-            Offset = Ligne.split(maxsplit=1)[0] 																						#Lecture  de l'offset du debut de ligne
-        else:
-            Offset = ""
-
-        if OffsetValide(Offset, OffsetCourant):
-            OffsetCourant = int(Offset, 16)
-            PositionLignes[Ligne] = index
-            LignesValides.append(Ligne) 																								#On ajoute l'offset dans le tableau ssi il est valide
-        else:
-            print("Ligne removed  :  ", Lignes[index])
-
-    TramesCorrectes = []
-    TramesErronees = []
-    LignesErronees = []
-
-    for index in range(len(LignesValides)):
-
-        OffsetCourant = int(LignesValides[index].split(maxsplit=1)[0], 16)
-        if index+1 == len(LignesValides) : 
-            OffsetSuivant = 0
-        else:
-            OffsetSuivant = int(LignesValides[index+1].split(maxsplit=1)[0], 16)
-
-        if OffsetCourant == 0:
-            Trame = []
-            trameValide = True
+    if   int(Hardware,16) == 1:  
+        print("\t\tHardware type: Ethernet (1)")
+        outputFile.write("\t\tHardware type: Ethernet (1) \n")
         
-        splittedLine = LignesValides[index].split()
+    if ProtocolType == "0800":
+        print("\t\tProtocol type: IPVersion4 (0x0800)") 
+        outputFile.write("\t\tProtocol type: IPVersion4 (0x0800)\n")
 
-        if OffsetSuivant != 0 :
-            NmbrOctetsSurLaLigne = OffsetSuivant - OffsetCourant
 
-            if SequenceOctetValide(splittedLine[1:], NmbrOctetsSurLaLigne) : 
-                Trame.extend(splittedLine[1:NmbrOctetsSurLaLigne+1])
-            else:
-                LignesErronees.append(PositionLignes[LignesValides[index]])
-                trameValide = False
-        else: 
-            
+    print("\t\tHardware size: {}".format(int(Hardlen,16)))
+    outputFile.write("\t\tHardware size: {}\n".format(int(Hardlen,16)))
 
-            if Trame[12]+Trame[13] == "0806":   
-                LongueurTrame = 60-14         
-            else :
-                if len(Trame) > 18:  
-                    LongueurTrame = int(Trame[16]+Trame[17], 16)
-                else:
-                    LongueurTrame = -1
-                    if len(splittedLine[1:]) > 18 - len(Trame) :  
-                        try:
-                            LongueurTrame = int(splittedLine[17-len(Trame)]+splittedLine[18-len(Trame)], 16)
-                        except: 
-                            trameValide = False
-                            LignesErronees.append(PositionLignes[LignesValides[index]])
-                            print("Champs longueur totale du datagramme IP érroné ligne erronée : numéro :", PositionLignes[LignesValides[index]])
-            NmbrOctetsSurLaLigne = LongueurTrame + 14 - len(Trame)     									#LongueurTrame représente la longueur totale de la Trame
-                                                                    																			     
-            if SequenceOctetValide(splittedLine[1:], NmbrOctetsSurLaLigne) :
-                print(splittedLine[1:NmbrOctetsSurLaLigne+1])
-                Trame.extend(splittedLine[1:NmbrOctetsSurLaLigne+1])
-            else:
-                trameValide = False
-                LignesErronees.append(PositionLignes[LignesValides[index]])
+    print("\t\tProtocol size: {}".format(int(Protlen,16)))
+    outputFile.write("\t\tProtocol size: {}\n".format(int(Protlen,16)))
 
-            if trameValide :
-                TramesCorrectes.append(Trame)
-            else:
-                TramesErronees.append(Trame)
+    Opercode = {"0001" : "request (1)", "0002" : "reply (2)"}
+    print("\t\tOpcode: {}".format(Opercode[Oper]))
 
-    return {"trames correctes" : TramesCorrectes,
-            "trames erronees" : TramesErronees,
-            "lignes erronees" : LignesErronees,
-            }
+    outputFile.write("\t\tOpcode: {}\n".format(Opercode[Oper]))
+    print("\t\tSender Hardware address: {}".format(SenderHardwareAdress))
+
+    outputFile.write("\t\tSender Hardware address: {}\n".format(SenderHardwareAdress))
+    print("\t\tSender Protocol adress: {}".format(SenderProtocolAdress))
+
+    outputFile.write("\t\tSender Protocol adress: {}\n".format(SenderProtocolAdress))
+    print("\t\tTarget Hardware address: {}".format(TargetHardwareAddress))
+
+    outputFile.write("\t\tTarget Hardware address: {}\n".format(TargetHardwareAddress))
+    print("\t\tTarget Protocol adress: {}".format(TargetProtocolAdress))
+    outputFile.write("\t\tTarget Protocol adress: {}\n".format(TargetProtocolAdress))
 
 #----------------------------------------------------------------------------------------------Couche04: UDP--------------------------------------------------------------------------------------------------------
 
-def UDP (Trame, LongueurIP):
+def Udp (Trm, LongueurIP):
     """Cette fonction analyse le segment UDP affiche ses champs
     Arguments :1)-> Trame à analyser,
     				  2)-> Longueur de l'entete IP
     """
-    Offset = 14+LongueurIP 
+    Off = 14+LongueurIP 
 
-    Source_port=Trame[Offset]+Trame[Offset+1]
+    Srce_port=Trm[Off]+Trm[Off+1]
 
-    Dest_port=Trame[Offset+2]+Trame[Offset+3]
-    detect_dns = int(Source_port,16) == 53 or int(Dest_port, 16) == 53
-    #si le port source est le port 53, alors le protocole utlise est dns
+    Des_port=Trm[Off+2]+Trm[Off+3]
+    detect_dns = int(Srce_port,16) == 53 or int(Des_port, 16) == 53
+    #si le port source est le port 53, alors le protocole est dns
 
-    Length = Trame[Offset+4]+Trame[Offset+5]
-    Checksum = Trame[Offset+6]+Trame[Offset+7]
+    Len = Trm[Off+4]+Trm[Off+5]
+    Checksum = Trm[Off+6]+Trm[Off+7]
 
     print("   "+Colors.BOLD+Colors.UNDERLINE+"User Datagram Protocol: (UDP)"+Colors.ENDC)
 
-    print("\tSource Port: {}".format(int(Source_port,16)))
-    outputFile.write("\tSource Port: {}".format(int(Source_port,16)))
+    print("\t\tSource Port: {}".format(int(Srce_port,16)))
+    outputFile.write("\t\tSource Port: {}".format(int(Srce_port,16)))
 
-    print("\tDestination Port : {}".format(int(Dest_port,16)))
-    outputFile.write("\tDestination Port : {}".format(int(Dest_port,16)))
+    print("\t\tDestination Port : {}".format(int(Des_port,16)))
+    outputFile.write("\t\tDestination Port : {}".format(int(Des_port,16)))
 
-    print("\tLength: {}".format(int(Length,16)))
-    outputFile.write("\tLength: {}".format(int(Length,16)))
+    print("\t\tLength: {}".format(int(Len,16)))
+    outputFile.write("\t\tLength: {}".format(int(Len,16)))
 
-    print("\tChecksum: 0x{} [unverified]".format(Checksum))
-    outputFile.write("\tChecksum: 0x{} [unverified]".format(Checksum))
+    print("\t\tChecksum:  0x{} [unverified]".format(Checksum))
+    outputFile.write("\t\tChecksum:  0x{} [unverified]".format(Checksum))
     if detect_dns :
-        dns(Trame, 14 + LongueurIP + 8)
+        dns(Trm, 14 + LongueurIP + 8)
 
 
 
@@ -709,7 +713,233 @@ def dns(trame, dns_start):
     if old_offset == offset :
         print_s("\tNone")
 
+def DHCP(trame,idd):
+	file.write("\n\t Message type:\t\t\t")
+	if (int(trame[idd],16)==1):
+		file.write("Boot Request (1)")
+	file.write(str(int(trame[idd],16)))
+	idd+=1
+	
+	file.write("\n\tHardware type :\t\t\t")
+	temp=int(trame[idd],16)
+	if(temp==1):
+		file.write("Ethernet ")
+		file.write("("+hex(temp)+")")
+	else:
+		file.write(temp)
+	idd+=1
+	
+	file.write("\n\t Hardware adress length")
+	file.write(str(int(trame[idd],16)))
+	idd+=1
+	
+	temp=""
+	for i in trame[idd:idd+4]:
+		temp+=i
+	file.write("\n\t Transaction ID : \t\t\t")
+	file.write(hex(int(temp,16)))
+	idd+=4
+	
+	temp=""
+	
+	for i in trame[idd:idd+1]:
+		temp+=i
+	file.write("\n\t Seconde elapsed : \t\t")
+	file.write(str(int(temp,16)))
+	idd+=2
+	temp=""
+	for i in trame[idd:idd+2]:
+		temp+=i
+	file.write("\n\t Bootp flags ;\t\t\t")
+	if (int(temp,16)==0):
+		file.write(hex(int(temp,16)))
+		file.write("      (Unicast")
+	else:
+		file.write(hex(int(temp,16)))
+	idd+=2
+	
+	file.write("\n\t CLient IP adress : \t\t")
+	
+	for i in trame[idd:idd+3]:
+		file.write(str(int(i)))
+		file.write(".")
+	file.write(str(int(trame[idd+4],16)))
+	idd+=4
+	
+	file.write("\n\t Tour (Client) IP adress:")
+	for i in trame[idd:idd+3]:
+		file.write(str(int(i,16)))
+		file.write(".")
+	file.write(str(int(trame[idd+4],16)))
+	idd+=4
+	
+	file.write("\n\t Next Server IP adress")
+	for i in trame[idd:idd+3]:
+		file.write(str(int(i,16)))
+		file.write(".")
+	file.write(str(int(trame[idd+4],16)))
+	idd+=4
+	
+	file.write("\n\t Reply agent IP adress")
+	
+	for i in trame[idd:idd+3]:
+		file.write(str(int(i,16))+".")
+	file.write(str(int(trame[idd+4],16)))
+	idd+=4
+	
+	#for i in trame[idd:idd+5]:
+		 #file.write(hex(int(i,16))+[2: ]+".")
+	#file.write(hex(int(trame[idd+4],16))[2:])
+	
+	idd+=6
+	
+	file.write("\n\t Reply agent IP adress")	
+	
+	for i in trame[idd:idd+10]:
+		file.write(str(int(i,16)))
+	idd+=10
+	
+	idd+=64
+	
+	idd+=128
+	
+	file.write("\n\t Magic cookie : \t\t\t")
+	file.write("DHCP \t\t")
+	
+	temp= ' '
+	
+	for i in trame[idd:idd+4]:
+		file.write(hex(int(i,16))[2:])
+	file.write("0x"+temp)
+	idd+=4
+	
+	file.write("\n\t Next Server IP adress")
+		
+	file.write("\n\n\t Option + ("+ str(int(trame[idd],16))+")")
+	idd+=1
+	
+	file.write("\n\t\tLength : "+str(int(trame[idd],16)))
+	idd+=1
+	
+	if (int(trame[idd],16)==1):
+		file.write("\n\t\t DHCP :Discover (1)")
+		
+	if (int(trame[idd],16)==2):
+		file.write("\n\t\t DHCP :Offer (2)")
+			
+	if (int(trame[idd],16)==3):
+		file.write("\n\t\t DHCP :Request (3)")
+		
+	if (int(trame[idd],16)==4):
+		file.write("\n\t\t DHCP :Decline (4)")
+		
+	if (int(trame[idd],16)==5):
+		file.write("\n\t\t DHCP :ACK (1)")
+	
+	if (int(trame[idd],16)==6):
+		file.write("\n\t\t DHCP :NACK (1)")
+	if (int(trame[idd],16)== 7):
+		Dname(trame,idd,l)
+	
+	elif (i==60):
+		file.write("\n\t\t\t Vendor class iidentifier : ")
+		Dname(trame,idd,l)
+	elif (i==1):
+		file.write("\n\t\t\t Subnet MASK : ")
+		IPDHCP(trame,idd,l)
+	elif (i==2):
+		file.write("\n\t\t\t Routeur : ")
+		IPDHCP(trame,idd,l)
+	elif (i==6):
+		file.write("\n\t\t\t DNS : ")
+		IPDHCP(trame,idd,l-4)
+		
+		file.write("\n\t\t\t DNS : ")
+		IPDHCP(trame,idd+4,l-4)
+		
+	elif (i==15):
+		file.write("\n\t\t\t Domain name : ")
+		Dname(trame,idd,l-1)
+	elif (i==51):
+		file.write("\n\t\t\t Adress lease time : ")
+		temp=' '
+		for i in trame[idd:idd+1]:
+			temp+=0
+		file.write("("+str(int(temp,16))+"s)")
+	elif (i==54):
+		file.write("\n\t\t\t DHCP SERVER Identifier : ")
+		IPDHCP(trame,idc,l)
+		
+		
+	else:
+		file.write("\n\t\t Option DHCP Non traiter")	
+		
+		
+	if (int(trame[idd],16)==6):
+		file.write("\n\t\t DHCP :NACK (6)")
+	if (int(trame[idd],16)==7):
+		file.write("\n\t\t DHCP :Release (5)")
+	if (int(trame[idd],16)==8):
+		file.write("\n\t\t DHCP :inform (5)")
+	idd+=1
+	file.write("\n")
+	
+	while(str(trame[idd]) != 'ff'):
+		file.write("\n\t\t Option : ("+str(int(trame[idd],16))+")")
+		
+		i=int(trame[idd],16)
+		idd+=1
+	
+		file.write("\n\t\t Length : "+str(int(trame[idd],16)))
+		
+		l=int(trame[idd],16)
+		idd+=1
+		
+		if (i==116):
+			file.write("\n\t\t\t DHCP Auto Configuration :Auto Configure (1)")
+			
+def DName(trame,idd,l):
+	temp =' '
+	for i in trame[idd:idd+i]:
+		temp+=i
+		
+	hx=bytes.fromhex(temp)
+	hx.decode("ASCII")
+	hx=hx[:len(hx)]
+	file.write(str(hx))
 
+def IPDHCP(trame,idd,l):
+	for i in trame[idd:idd+i-1]:
+		file.write(str(int(i,16)))
+		file.write(" . ")
+	file.write(str(int(trame[idd+(l-1)],16)))
+	file.write("\n")
+	
+	return idd+l
+	
+def MACDHCP(trame,idd,l):
+	for i in trame[idd:idd+l-1]:
+		file.write(str(int(i,16)))
+		file.write(" : ")
+	file.write(str(int(trame[idd+(l-1)],16)))
+	file.write("\n")
+	return idd+l
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 #---------------------------------------------------------------------------------------------Couche07: DHCP&DNS------------------------------------------------------------------------------------------------
 
 
@@ -721,20 +951,20 @@ class Colors:
 	BOLD = '\033[1m'
 	ENDC = '\033[0m'
 
-outputFile = open("resultatAnalyseur.txt", "w")
+outputFile = open("ResAnalys.txt", "w")
 
 def main():
     while True:
-        fileName = input(Colors.BOLD+"Entrer le nom du fichier contenant la(les) Trame(s) : "+Colors.ENDC)
+        NomFichier = input(Colors.BOLD+"Entrer le nom du fichier qui contient la(les) Trame(s) : "+Colors.ENDC)
         try:
-            file = open(fileName)
+            file = open(NomFichier)
         except:
             print("Fichier non existant !! ")
         else:
             break
-    outputFile.write("Trame(s) extraite(s) du fichier : "+fileName+"\n")
+    outputFile.write("Trame(s) extraite(s) du fichier : "+NomFichier+"\n")
     Dico = FichierParse(file)
-    Couches(Dico)
+    Layers(Dico)
     outputFile.close()
 
 
