@@ -6,4 +6,4 @@
 3-Pour lancer le programme, il faut:
 	-Ouvrir un termimal puis accèder au répertoire du dossier compressé ensuite  lancer la commande "make".
 
-4-Une fois l'execution faite le programme affiche "Veuillez selectionner un fichier " dans ce cas alors vous devez taper le nom d'un fichier existant .
+4-Une fois l'execution faite le programme affiche "Veuillez selectionner un fichier " dans ce cas alors vous devez taper le nom d'un fichier existant dans le meme repertoire.
