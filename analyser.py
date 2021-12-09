@@ -17,17 +17,17 @@ def FichierParse (file):
     for ind in range(len(Lignes)):
 
         Ligne = Lignes[ind].strip().lower()
-        #On enleve les espaces à gauche et à droite puis mettre les caracteres en minuscule
+        
 
         if Ligne :
-            Offset = Ligne.split(maxsplit=1)[0] 																						#Lecture  de l'offset du debut de ligne
+            Offset = Ligne.split(maxsplit=1)[0] 																						
         else:
             Offset = ""
 
         if OffsetValide(Offset, OffsetCourant):
             OffsetCourant = int(Offset, 16)
             PositionLignes[Ligne] = ind
-            LignesValides.append(Ligne) 																								#On ajoute l'offset dans le tableau ssi il est valide
+            LignesValides.append(Ligne) 																								
         else:
             print("Ligne removed  :  ", Lignes[ind])
 
@@ -198,7 +198,7 @@ def IPVersion4(Trame):
     Argument : Trame à analyser
     """
     
-    Offset = 14                                                                                #Début du datagramme IPVersion4 par rapport au début de la Trame
+    Offset = 14                                                                                
     Protocols= {1: "ICMP", 2 : "IGMP", 6 : "TCP", 17: "UDP", 36 : "XTP"}
 
     Version = Trame[Offset+0][0]
@@ -255,7 +255,7 @@ def IPVersion4(Trame):
 #-----------------------------------------------------------------------------------------------------OPTIONS IP-----------------------------------------------------------------------------------------------------
 
     
-    if (HeaderLength32 > 5):                             #Si la longueur >20Bytes alors le Header IP contiens des otpions 
+    if (HeaderLength32 > 5):                             
 
         NmbrOctetsOptions = (HeaderLength32 - 5) * 4
         print_s("\tOptions: {} bytes".format(NmbrOctetsOptions))
@@ -265,7 +265,7 @@ def IPVersion4(Trame):
         while True : 
             if NmbrOctetsOptions == 0 : 
                 break
-            PremierOctetOption = Trame[off]              #Champ type de l'option
+            PremierOctetOption = Trame[off]              
 
             if (int(PremierOctetOption, 16) == 0):
                 print_s("\t  IP Option  -  End of Options List (EOL)")
