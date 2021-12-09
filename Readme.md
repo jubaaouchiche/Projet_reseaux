@@ -25,12 +25,11 @@ préalablement sur un réseau Ethernet. Ce programme a été codé en python(3).
 
 ## Résultat
 
-Le programme analyse donc la(les) trace(s) donnée(s) dans le fichier passé en argument et renvoie un autre fichier qui contient le résultat de d'analyse :
-
-- Le nom du fichier passé en parametre. 
-- Le nombre de trames correctes.
+Le programme va analyser la(les) trame(s) du fichier passé en parametre et renvoie un autre fichier qui contient le résultat de l'analyse :
+- Les lignes supprimées
 - Le nombre de trames erronées.
-- Analyse des protocoles de chaque trame.
+- Le nombre de trames correctes.
+- le resultat de l'analyse de toutes les trames.
 
 ## Les Protocoles + options supportées 
 
