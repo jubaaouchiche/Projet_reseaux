@@ -1,4 +1,4 @@
-### Exécution
+### Lacement du programme
 
 1-Tout d'abord il faut installer python3 puis télécharger l'archive du projet.
 2-Ensuite le décompresser.
