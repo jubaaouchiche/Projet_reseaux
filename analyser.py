@@ -1,6 +1,59 @@
-# Projet_reseaux:
 
-#-----------------------------------------------------------------------------------------------------------Fichier Parse---------------------------------------------------------------------------------------------
+###################################
+###################################
+######    PROJET RESEAUX:    ######
+###################################
+###################################
+
+
+
+
+def OffsetValide(OffsetCourant, OffsetPrecedent):
+    """Cette fonction compare les deux arguments et renvoie si le premier Offset est superieur au deuxieme
+    Arguments : 1)-> Offset courant,
+                       2)-> Offset precedent.
+    Retourne : True si l'Offset courant est valide c'est à dire si il est superieur à l'Offset  precedent)
+    """
+    try:
+        O = int(OffsetCourant, 16) 					#L'offset en hexa
+    except:
+        return False
+    
+    if O == 0 :
+        return True
+    
+    return O >= OffsetPrecedent 
+
+def hex_to_bin(byte):
+    """Cette fonction traduit UN octet de l'hexadecimal vers le binaire
+    Argument : octet en hexa (str),
+    Retourne : octet en binaire (str)
+    """
+    return '{:0>8}'.format(format(int(byte, 16), 'b'))
+
+def SequenceOctetValide(SequenceOctet, NmbrOctets): 
+    """Cette fonction lit la sequences d'octets passée en arguments .
+    Arguments : 1)-> Sequence d'octets,
+    				   2)->  Nombre d'octets.
+    Retourne : True si tous les nombres d'octets sont des caracteres hexadecimaux, False sinon
+    """
+    fin = False
+    indd = 0
+    
+    while not fin :
+        if NmbrOctets == 0 :
+            return True
+        try:
+            int(SequenceOctet[indd], 16)                                                                                          #Recuperation de l'offset en position indd 
+        except:
+            return False
+
+        indd+=1
+        NmbrOctets-=1
+
+
+#----------------ParseFile----------------------------
+
 def FichierParse (file):
     """FichierParse lit le fichier à analyser.
     Arg :  fichier dans le meme repertoire.
@@ -14,40 +67,40 @@ def FichierParse (file):
     LignesValides, PositionLignes = [], {}
     
 
-    for ind in range(len(Lignes)):
+    for index in range(len(Lignes)):
 
-        Ligne = Lignes[ind].strip().lower()
-        
+        Ligne = Lignes[index].strip().lower()
+        #On enleve les espaces à gauche et à droite puis mettre les caracteres en minuscule
 
         if Ligne :
-            Offset = Ligne.split(maxsplit=1)[0] 																						
+            Offset = Ligne.split(maxsplit=1)[0] 																						#Lecture  de l'offset du debut de ligne
         else:
             Offset = ""
 
         if OffsetValide(Offset, OffsetCourant):
             OffsetCourant = int(Offset, 16)
-            PositionLignes[Ligne] = ind
-            LignesValides.append(Ligne) 																								
+            PositionLignes[Ligne] = index
+            LignesValides.append(Ligne) 																								#On ajoute l'offset dans le tableau ssi il est valide
         else:
-            print("Ligne supprimee  :  ", Lignes[ind])
+            print("Ligne removed  :  ", Lignes[index])
 
     TramesCorrectes = []
     TramesErronees = []
-    ListeLignesErronees = []
+    LignesErronees = []
 
-    for ind in range(len(LignesValides)):
+    for index in range(len(LignesValides)):
 
-        OffsetCourant = int(LignesValides[ind].split(maxsplit=1)[0], 16)
-        if ind+1 == len(LignesValides) : 
+        OffsetCourant = int(LignesValides[index].split(maxsplit=1)[0], 16)
+        if index+1 == len(LignesValides) : 
             OffsetSuivant = 0
         else:
-            OffsetSuivant = int(LignesValides[ind+1].split(maxsplit=1)[0], 16)
+            OffsetSuivant = int(LignesValides[index+1].split(maxsplit=1)[0], 16)
 
         if OffsetCourant == 0:
             Trame = []
-            trameValidee = True
+            trameValide = True
         
-        splittedLine = LignesValides[ind].split()
+        splittedLine = LignesValides[index].split()
 
         if OffsetSuivant != 0 :
             NmbrOctetsSurLaLigne = OffsetSuivant - OffsetCourant
@@ -55,8 +108,8 @@ def FichierParse (file):
             if SequenceOctetValide(splittedLine[1:], NmbrOctetsSurLaLigne) : 
                 Trame.extend(splittedLine[1:NmbrOctetsSurLaLigne+1])
             else:
-                ListeLignesErronees.append(PositionLignes[LignesValides[ind]])
-                trameValidee = False
+                LignesErronees.append(PositionLignes[LignesValides[index]])
+                trameValide = False
         else: 
             
 
@@ -71,29 +124,78 @@ def FichierParse (file):
                         try:
                             LongueurTrame = int(splittedLine[17-len(Trame)]+splittedLine[18-len(Trame)], 16)
                         except: 
-                            trameValidee = False
-                            ListeLignesErronees.append(PositionLignes[LignesValides[ind]])
-                            print("Champs longueur totale du datagramme IP errone ligne erronée : n°", PositionLignes[LignesValides[ind]])
+                            trameValide = False
+                            LignesErronees.append(PositionLignes[LignesValides[index]])
+                            print("Champs longueur totale du datagramme IP errone ligne erronée : n°", PositionLignes[LignesValides[index]])
             NmbrOctetsSurLaLigne = LongueurTrame + 14 - len(Trame)     									#LongueurTrame représente la longueur totale de la Trame
                                                                     																			     
             if SequenceOctetValide(splittedLine[1:], NmbrOctetsSurLaLigne) :
                 print(splittedLine[1:NmbrOctetsSurLaLigne+1])
                 Trame.extend(splittedLine[1:NmbrOctetsSurLaLigne+1])
             else:
-                trameValidee = False
-                ListeLignesErronees.append(PositionLignes[LignesValides[ind]])
+                trameValide = False
+                LignesErronees.append(PositionLignes[LignesValides[index]])
 
-            if trameValidee :
+            if trameValide :
                 TramesCorrectes.append(Trame)
             else:
                 TramesErronees.append(Trame)
 
     return {"trames correctes" : TramesCorrectes,
             "trames erronees" : TramesErronees,
-            "lignes erronees" : ListeLignesErronees,
+            "lignes erronees" : LignesErronees,
             }
 
-#----------------------------------------------------------------------------------------------------------------Ethernet----------------------------------------------------------------------------------------------
+
+def Couches (Dico):
+    Trames = Dico["trames correctes"]
+    NmbrTrames = len(Trames)
+    
+    print_s(Colors.FAIL+Colors.BOLD+"Trames erronees : " + str(len(Dico["trames erronees"])) + Colors.ENDC)
+
+    for ligne in Dico["lignes erronees"]:
+        print_s("\tLigne {} erronnee".format(ligne))
+
+    print_s(Colors.OKGREEN+Colors.BOLD+"Trame(s) correcte(s) : "+ str(NmbrTrames)+ Colors.ENDC+"\n")
+
+    for Trame, i  in zip(Trames, range(len(Trames))) :
+        print_s(Colors.WARNING+"Trame {} : ({} octets)".format(i, len(Trame))+Colors.ENDC)
+        try :
+            Ethernet(Trame)
+        except Exception as excep:
+            if hasattr(excep, 'message'):
+                print(excep.message)
+            else:
+                print(excep)
+            
+        print_s("\n")
+
+def Layers (Dico):
+    
+    Trames = Dico["trames correctes"]
+    NmbrTrames = len(Trames)
+    
+    print_s(Colors.FAIL+Colors.BOLD+"Trames erronees : " + str(len(Dico["trames erronees"])) + Colors.ENDC)
+
+    for ligne in Dico["lignes erronees"]:
+        print_s("\tLigne {} erronnee".format(ligne))
+
+    print_s(Colors.OKGREEN+Colors.BOLD+"Trame(s) correcte(s) : "+ str(NmbrTrames)+ Colors.ENDC+"\n")
+
+    for Trame, i  in zip(Trames, range(len(Trames))) :
+        print_s(Colors.WARNING+"Trame {} : ({} octets)".format(i, len(Trame))+Colors.ENDC)
+        try :
+            Ethernet(Trame)
+        except Exception as excep:
+            if hasattr(excep, 'message'):
+                print(excep.message)
+            else:
+                print(excep)
+            
+        print_s("\n")
+
+
+#--------------------Couche 02:Ethernet---------------------------
 
 def Ethernet (Trame) : 
     """Cette fonction analyse la Trame Ethernet  et affiche ses champs 
@@ -126,74 +228,60 @@ def Ethernet (Trame) :
     else :
         print_s(Colors.WARNING+Colors.BOLD+"  Protocol n°{} (non supporte !)".format(typee)+Colors.ENDC)
 
-def Layers (Dico):
-    
-    Trames = Dico["trames correctes"]
-    NmbrTrames = len(Trames)
-    
-    print_s(Colors.FAIL+Colors.BOLD+"Trames erronees : " + str(len(Dico["trames erronees"])) + Colors.ENDC)
-
-    for ligne in Dico["lignes erronees"]:
-        print_s("\tLigne {} erronnee".format(ligne))
-
-    print_s(Colors.OKGREEN+Colors.BOLD+"Trame(s) correcte(s) : "+ str(NmbrTrames)+ Colors.ENDC+"\n")
-
-    for Trame, i  in zip(Trames, range(len(Trames))) :
-        print_s(Colors.WARNING+"Trame {} : ({} octets)".format(i, len(Trame))+Colors.ENDC)
-        try :
-            Ethernet(Trame)
-        except Exception as excep:
-            if hasattr(excep, 'message'):
-                print(excep.message)
-            else:
-                print(excep)
-            
-        print_s("\n")
-
-def SequenceOctetValide(SequenceOctet, NmbrOctets): 
-    """Cette fonction lit la sequences d'octets passée en arguments .
-    Arguments : 1)-> Sequence d'octets,
-    				   2)->  Nombre d'octets.
-    Retourne : True si tous les nombres d'octets sont des caracteres hexadecimaux, False sinon
+def ARP (Trm):
+    """Cette fonction analyse le datagramme ARP et ses champs
+    Argument : Trame à analyser
+    type du Hardware est Ethernet
+                 type du protocole est IPVersion4
     """
-    fin = False
-    dd = 0
+    print_s("   "+Colors.BOLD+Colors.UNDERLINE+"Adress Resolution Protocol:"+Colors.ENDC)
     
-    while not fin :
-        if NmbrOctets == 0 :
-            return True
-        try:
-            int(SequenceOctet[dd], 16)                                                                                           
-        except:
-            return False
-
-        dd+=1
-        NmbrOctets-=1
-
-
-def OffsetValide(OffsetCourant, OffsetPrecedant):
-    """Cette fonction compare les deux arguments renvoie True si le premier est superieur au deuxieme Offset . 
-    Arguments : 1)-> Offset courant,
-                       2)-> Offset precedant.
-    Retourne : True si l'Offset courant est valide c'est à dire si il est superieur à l'Offset  precedant)
-    """
-    try:
-        Offs = int(OffsetCourant, 16) 																
-    except:
-        return False
     
-    if Offs == 0 :
-        return True
+    Offset = 14  
     
-    return Offs >= OffsetPrecedant 
+    #Initialisation des champs de l'entete ARP
+    Hardware = Trm[Offset]+Trm[Offset+1]
     
+    ProtocolType = Trm[Offset+2]+Trm[Offset+3]
+    
+    Hardlen = Trm[Offset+4]
+    
+    Protlen = Trm[Offset+5]
+    
+    Oper =  Trm[Offset+6]+Trm[Offset+7]
+    
+    SenderHardwareAdress =  Trm[Offset+8]+":"+Trm[Offset+9]+":"+Trm[Offset+10]+":"+Trm[Offset+11]+":"+Trm[Offset+12]+":"+Trm[Offset+13]
+    
+    SenderProtocolAdress =  ".".join([str(int(oc, 16)) for oc in Trm[Offset+14:Offset+18]])
+    
+    TargetHardwareAddress =  Trm[Offset+18]+":"+Trm[Offset+19]+":"+Trm[Offset+20]+":"+Trm[Offset+21]+":"+Trm[Offset+22]+":"+Trm[Offset+23]
+    
+    TargetProtocolAdress =  ".".join([str(int(oc, 16)) for oc in Trm[Offset+24:Offset+28]])
+
+	#Affichage des champs de l'entete ARP
+    if   int(Hardware,16) == 1:  
+        print_s("\tHardware type: Ethernet (1)")
+        
+    if ProtocolType == "0800":
+        print_s("\tProtocol type: IPVersion4 (0x0800)") 
 
 
+    print_s("\tHardware size: {}".format(int(Hardlen,16)))
 
+    print_s("\tProtocol size: {}".format(int(Protlen,16)))
 
+    Opcode = {"0001" : "request (1)", "0002" : "reply (2)"}
+    print_s("\tOpcode: {}".format(Opcode[Oper]))
 
+    print_s("\tSender Hardware address: {}".format(SenderHardwareAdress))
 
-#------------------------------------------------------------------------------------------------------Couches 3: IP+ ARP------------------------------------------------------------------------------------------
+    print_s("\tSender Protocol adress: {}".format(SenderProtocolAdress))
+
+    print_s("\tTarget Hardware address: {}".format(TargetHardwareAddress))
+
+    print_s("\tTarget Protocol adress: {}".format(TargetProtocolAdress))
+
+#-------------Couche 3: IP--------------------
 
 def IPVersion4(Trame):
     """Cette fonction analyse le datagramme IP version 4  affiche ses champs
@@ -258,7 +346,7 @@ def IPVersion4(Trame):
     print_s("\tSource Address: {}".format(Srce_addr))
     print_s("\tDestination Address: {}".format(Des_addr))
 
-#---------------------------------------------------------------------------------Traitement des OPTIONS IP-----------------------------------------------------------------------------------------------------
+#--------Traitement des OPTIONS IP--------
 
     #Si la valeur du HL et superieure à 5 c'est à dire on a une entete >20 octets dans ce cas on a des options  IP 
     
@@ -380,61 +468,8 @@ def IPVersion4(Trame):
     else:
         print_s("   "+Colors.BOLD+Colors.UNDERLINE+"Protocol n°{} non supporte".format(Protocol)+Colors.ENDC)
 
-def ARP (Trm):
-    """Cette fonction analyse le datagramme ARP et ses champs
-    Argument : Trame à analyser
-    type du Hardware est Ethernet
-                 type du protocole est IPVersion4
-    """
-    print_s("   "+Colors.BOLD+Colors.UNDERLINE+"Adress Resolution Protocol:"+Colors.ENDC)
-    
-    
-    Offset = 14  
-    
-    #Initialisation des champs de l'entete ARP
-    Hardware = Trm[Offset]+Trm[Offset+1]
-    
-    ProtocolType = Trm[Offset+2]+Trm[Offset+3]
-    
-    Hardlen = Trm[Offset+4]
-    
-    Protlen = Trm[Offset+5]
-    
-    Oper =  Trm[Offset+6]+Trm[Offset+7]
-    
-    SenderHardwareAdress =  Trm[Offset+8]+":"+Trm[Offset+9]+":"+Trm[Offset+10]+":"+Trm[Offset+11]+":"+Trm[Offset+12]+":"+Trm[Offset+13]
-    
-    SenderProtocolAdress =  ".".join([str(int(oc, 16)) for oc in Trm[Offset+14:Offset+18]])
-    
-    TargetHardwareAddress =  Trm[Offset+18]+":"+Trm[Offset+19]+":"+Trm[Offset+20]+":"+Trm[Offset+21]+":"+Trm[Offset+22]+":"+Trm[Offset+23]
-    
-    TargetProtocolAdress =  ".".join([str(int(oc, 16)) for oc in Trm[Offset+24:Offset+28]])
 
-	#Affichage des champs de l'entete ARP
-    if   int(Hardware,16) == 1:  
-        print_s("\tHardware type: Ethernet (1)")
-        
-    if ProtocolType == "0800":
-        print_s("\tProtocol type: IPVersion4 (0x0800)") 
-
-
-    print_s("\tHardware size: {}".format(int(Hardlen,16)))
-
-    print_s("\tProtocol size: {}".format(int(Protlen,16)))
-
-    Opcode = {"0001" : "request (1)", "0002" : "reply (2)"}
-    print_s("\tOpcode: {}".format(Opcode[Oper]))
-
-    print_s("\tSender Hardware address: {}".format(SenderHardwareAdress))
-
-    print_s("\tSender Protocol adress: {}".format(SenderProtocolAdress))
-
-    print_s("\tTarget Hardware address: {}".format(TargetHardwareAddress))
-
-    print_s("\tTarget Protocol adress: {}".format(TargetProtocolAdress))
-
-
-#----------------------------------------------------------------------------------------------Couche04: UDP--------------------------------------------------------------------------------------------------------
+#-------------------Couche04: UDP-------------------------
 
 def Udp (Trm, LongueurIP):
     """Cette fonction analyse le segment UDP affiche ses champs
@@ -470,9 +505,16 @@ def Udp (Trm, LongueurIP):
     if detect_dhcp:
         DHCP(Trm, 14 + LongueurIP + 8)
 
-#--------------------------------------------------------------------------------------------------Couche 07: DNS--------------------------------------------------------------------------------------------------
+#-------------------Couche 07: DNS et DHCP-------------------------
+
+############ DHCP ############
+
 
 def DHCP(trame,idd):
+    """Cette fonction analyse le segment DHCP affiche ses champs
+    Arguments :1)-> Trame à analyser,
+    				  2)-> Début du DHCP
+    """
     print_s("   "+Colors.BOLD+Colors.UNDERLINE+"Dynamic Host Configuration Protocol : (DHCP)"+Colors.ENDC)
 
     to_print = "???"
@@ -571,89 +613,68 @@ def DHCP(trame,idd):
     for i in trame[idd:idd+4]:
         to_print += hex(int(i,16))[2:]
     to_print = "0x" + to_print +temp
-    print_s("\t Magic cookie : DHCP : "+to_print)
-    idd+=4
-		
-    print_s("\n\t Option + ("+ str(int(trame[idd],16))+")")
-    idd+=1
-	
-    print_s("\t\tLength : "+str(int(trame[idd],16)))
-    idd+=1
-	
-    if (int(trame[idd],16)==1):
-        print_s("\t\t DHCP :Discover (1)")
-		
-    if (int(trame[idd],16)==2):
-        print_s("\n\t\t DHCP :Offer (2)")
-			
-    if (int(trame[idd],16)==3):
-        print_s("\t\t DHCP :Request (3)")
-		
-    if (int(trame[idd],16)==4):
-        print_s("\t\t DHCP :Decline (4)")
-		
-    if (int(trame[idd],16)==5):
-        print_s("\t\t DHCP :ACK (1)")
-	
-    if (int(trame[idd],16)==6):
-        print_s("\t\t DHCP :NACK (1)")
-    if (int(trame[idd],16)== 7):
-        Dnom(trame,idd,l)
-	
-    elif (i==60):
-        print_s("\t\t\t Vendor class iidentifier : ")
-        Dnom(trame,idd,l)
-    elif (i==1):
-        print_s("\t\t\t Subnet MASK : ")
-        DhcpIP(trame,idd,l)
-    elif (i==2):
-        print_s("\t\t\t Routeur : ")
-        DhcpIP(trame,idd,l)
-    elif (i==6):
-        print_s("\t\t\t DNS : ")
-        DhcpIP(trame,idd,l-4)
-        print_s("\t\t\t DNS : ")
-        DhcpIP(trame,idd+4,l-4)
-    elif (i==15):
-        print_s("\t\t\t Domain name : ")
-        Dnom(trame,idd,l-1)
-    elif (i==51):
-        print_s("\t\t\t Adress lease time : ")
-        temp=' '
-        for i in trame[idd:idd+1]:
-            temp+=0
-        print_s("("+str(int(temp,16))+"s)")
-    elif (i==54):
-        print_s("\t\t\t DHCP SERVER Identifier : ")
-        DhcpIP(trame,idd,l)
-    else:
-        print_s("\t\t Option DHCP Non traite")	
-    if (int(trame[idd],16)==6):
-        print_s("\t\t DHCP :NACK (6)")
-    if (int(trame[idd],16)==7):
-        print_s("\t\t DHCP :Release (5)")
-    if (int(trame[idd],16)==8):
-        print_s("\t\t DHCP :inform (5)")
-    idd+=1
-    
-    while(str(trame[idd]) != 'ff'):
-        print_s("\t\t Option : "+str(int(trame[idd],16)))
-        i=int(trame[idd],16)
-        idd+=1
-        if int(trame[idd],16) == 255:
-            print_s("\t End of options list")
-            break
-        print_s("\t\t Length : "+str(int(trame[idd],16)))
-		
-        l=int(trame[idd],16)
-        idd+=1
-		
-        if (i==116):
-            print_s("\t\t\t DHCP Auto Configuration :Auto Configure (1)")
+    print_s("\t Magic cookie : DHCP")
+    print_s(Colors.BOLD+"\t Options :"+Colors.ENDC)
+    idd+=5
+    while idd+2 < len(trame):
+        l = int(trame[idd+1],16)
+        o = str(int(trame[idd],16))
+        print_s("\t   Option ("+ str(o) +"), length = " + str(l))
+        idd+=2
+        if (int(trame[idd],16)==1):
+            print_s("\t\t DHCP : Discover (1)")
+        elif (int(trame[idd],16)==2):
+            print_s("\t\t DHCP : Offer (2)")   
+        elif (int(trame[idd],16)==3):
+            print_s("\t\t DHCP : Request (3)")
+        elif (int(trame[idd],16)==4):
+            print_s("\t\t DHCP : Decline (4)")
+        elif (int(trame[idd],16)==5):
+            print_s("\t\t DHCP : ACK (1)")
+        elif (int(trame[idd],16)==6):
+            print_s("\t\t DHCP : NACK (1)")
+        elif (int(trame[idd],16)== 7):
+            Dnom(trame,idd,l)
+        elif (i==60):
+            print_s("\t\t Vendor class identifier : ")
+            Dnom(trame,idd,l)
+        elif (i==1):
+            print_s("\t\t Subnet MASK : ")
+            DhcpIP(trame,idd,l)
+        elif (i==2):
+            print_s("\t\t Routeur : ")
+            DhcpIP(trame,idd,l)
+        elif (i==6):
+            print_s("\t\t DNS : ")
+            DhcpIP(trame,idd,l-4)
+            print_s("\t\t\t DNS : ")
+            DhcpIP(trame,idd+4,l-4)
+        elif (i==15):
+            print_s("\t\t Domain name : ")
+            Dnom(trame,idd,l-1)
+        elif (i==51):
+            print_s("\t\t Adress lease time : ")
+            temp=' '
+            for i in trame[idd:idd+1]:
+                temp+=0
+            print_s("("+str(int(temp,16))+"s)")
+        elif (i==54):
+            print_s("\t\t DHCP SERVER Identifier : ")
+            DhcpIP(trame,idd,l)
+        elif (int(trame[idd],16)==6):
+            print_s("\t\t DHCP :NACK (6)")
+        elif (int(trame[idd],16)==7):
+            print_s("\t\t DHCP :Release (5)")
+        elif (int(trame[idd],16)==8):
+            print_s("\t\t DHCP :inform (5)")
+        """else:
+            print_s("\t\t Option DHCP Non traitee")"""
+        idd+=l
+    print_s("\t End of option list")
 			
 def Dnom(trame,idd,l):
     temp =' '
-    for i in trame[idd:idd+i]:
+    for i in trame[idd:idd+l]:
         temp+=i
 		
     hx=bytes.fromhex(temp)
@@ -662,7 +683,7 @@ def Dnom(trame,idd,l):
     print_s(str(hx))
 
 def DhcpIP(trame,idd,l):
-    to_print = ""
+    to_print = "\t "
     for i in trame[idd:idd+i-1]:
         to_print += (str(int(i,16)))
         to_print += (" . ")
@@ -676,7 +697,8 @@ def DhcpMAC(trame,idd,l):
 	print_s(str(int(trame[idd+(l-1)],16)))
 	return idd+l
 	
-#-----------------------------------------------------------------------------------------------------Couche 07: DNS-----------------------------------------------------------------------------------------------
+	
+############ DNS ############
 
 def dns_resource_record_analysis(trame, count, header_start, offset):
     """Cette fonction analyse un champ resource record de la section dns
@@ -704,7 +726,7 @@ def dns_resource_record_analysis(trame, count, header_start, offset):
             38  : "A6",
             18  : "AFSDB",
             5   : "CNAME",
-            39  : "Dnom",
+            39  : "DNAME",
             48  : "DNSKEY",
             43  : "DS",
             108 : "EUI48",
@@ -807,24 +829,10 @@ def read_dns_name(trame, header_start, offset):
     n_str = n_array.decode()
     return [n_str, l]
 
-def hex_to_bin(byte):
-    """Cette fonction traduit UN octet de l'hexadecimal vers le binaire
-    Argument : octet en hexa (str),
-    Retourne : octet en binaire (str)
-    """
-    return '{:0>8}'.format(format(int(byte, 16), 'b'))
-
-def print_s(to_print):
-	#Fonction d'affichage utile 
-    print(to_print)
-    for c in [Colors.OKGREEN, Colors.UNDERLINE, Colors.WARNING, Colors.FAIL, Colors.BOLD, Colors.ENDC]:
-        to_print = to_print.replace(c, "")
-    outputFile.write(to_print + "\n")
-
 def dns(trame, dns_start):
     """Cette fonction analyse le segment DNS et affiche ses champs
     Argument : 1)-> trame a analyser,
-    				  2)-> la position de l'entete dans la trame
+    				  2)-> Début du segment DNS
     """
     print_s("   "+Colors.BOLD+Colors.UNDERLINE+"Domain Name System : (DNS)"+Colors.ENDC)
     offset = dns_start
@@ -930,6 +938,15 @@ def dns(trame, dns_start):
 
 
 
+
+#------------- MAIN ---------------
+
+def print_s(to_print):
+    print(to_print)
+    for c in [Colors.OKGREEN, Colors.UNDERLINE, Colors.WARNING, Colors.FAIL, Colors.BOLD, Colors.ENDC]:
+        to_print = to_print.replace(c, "")
+    outputFile.write(to_print + "\n")
+
 class Colors:
 	OKGREEN = '\033[92m'
 	UNDERLINE = '\033[4m'
@@ -938,35 +955,26 @@ class Colors:
 	BOLD = '\033[1m'
 	ENDC = '\033[0m'
 
-outputFile = open("resultat.txt", "w")
-
-#---------------------------------------------------------------------------------------------------main---------------------------------------------------------------------------------------------------------------
+outputFile = open("resultatAnalyseur.txt", "w")
 
 def main():
-
     while True:
-        NomFichier = input(Colors.BOLD+"Entrer le nom du fichier qui contient la(les) Trame(s) : "+Colors.ENDC)
+        fileName = input(Colors.BOLD+"Entrer le nom du fichier contenant la(les) Trame(s) : "+Colors.ENDC)
         try:
-            file = open(NomFichier)
+            file = open(fileName)
         except:
             print("Fichier non existant !! ")
         else:
             break
-
-    outputFile.write("Trame(s) extraite(s) du fichier : "+NomFichier+"\n")
-
+    outputFile.write("Trame(s) extraite(s) du fichier : "+fileName+"\n")
     Dico = FichierParse(file)
-
-    Layers(Dico)
-
+    Couches(Dico)
     outputFile.close()
 
 
 
 if __name__ == "__main__":
     main()
-
-
 
 
 
