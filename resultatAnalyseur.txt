@@ -1,0 +1,30 @@
+Trame(s) extraite(s) du fichier : udp.txt
+Trames erronees : 0
+Trame(s) correcte(s) : 1
+
+Trame 0 : (75 octets)
+   Protocol Ethernet:
+	Destination: 8c:10:d4:f8:64:2c
+	Source: 3c:a0:67:db:0a:2b
+	Type: IPVersion4 (0x0800) 
+   Internet Protocol Version 4:
+	0100 .... = Version: 4 
+	.... 0101 = Header Length: 20 bytes (5) 
+	Identification: 0xaa23 (43555)
+	Flags: 0x40 
+		0... .... = Reserved bit: Not set 
+		.1.. .... = Don't fragment: Set 
+		..0. .... = More fragments: Not set 
+	Total Length: 61
+	Time to Live: 128
+	Protocol: UDP (17)
+	Header Checksum: 0x9552
+	Source Address: 192.168.0.18
+	Destination Address: 173.194.76.189
+   User Datagram Protocol: (UDP)
+	Source port: 53303
+	Destination port : 443
+	Length: 41
+	Checksum: 0x2f6d
+
+
