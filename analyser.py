@@ -99,28 +99,30 @@ def Ethernet (Trame) :
     """Cette fonction analyse la Trame Ethernet  et affiche ses champs 
     Argument : Trame à analyser
     """
+    #Champs de l'entete ethernet
     TypeDeProtocol = {"0800": "IPVersion4", "080": " ", "0806" : "ARP"}
-    
+    #champs adresse mac destination et adresse mac source (6 octets chacun)
     AdrDestination = Trame[0]+":"+Trame[1]+":"+Trame[2]+":"+Trame[3]+":"+Trame[4]+":"+Trame[5]
     AdrSource = Trame[6]+":"+Trame[7]+":"+Trame[8]+":"+Trame[9]+":"+Trame[10]+":"+Trame[11]
-    
+    #champs Ethertype sur 2 octets
     typee = Trame[12]+Trame[13]
-    
+    #affichage des  de l'entete Ethernet  adresse mac destination et adresse mac source
     print_s("   "+Colors.BOLD+Colors.UNDERLINE+"Protocol Ethernet:"+Colors.ENDC)
     print_s("\tDestination: {}".format(AdrDestination))
     print_s("\tSource: {}".format(AdrSource))
-
+	# affichage du champs ethertype
     if(typee in TypeDeProtocol.keys()):
     
         print_s("\tType: {} (0x{}) ".format(TypeDeProtocol[typee], typee))
     
-   
+   # si le type correspond à l'IPVersion4 on lance la fonction IPversion4 qui affiche les champs de l''entete IPv4
     if typee == "0800":
         IPVersion4(Trame)
     
+    #si le type correspond à l'ARP (0x0806) alors on lance la fonction ARP
     elif typee == "0806":
         ARP(Trame)
-    
+    #sinon on affiche Protocol non supporté avec le numero du protocol 
     else :
         print_s(Colors.WARNING+Colors.BOLD+"  Protocol n°{} (non supporte !)".format(typee)+Colors.ENDC)
 
@@ -202,17 +204,18 @@ def IPVersion4(Trame):
     Protocols= {1: "ICMP", 2 : "IGMP", 6 : "TCP", 17: "UDP", 36 : "XTP"}
 
     Version = Trame[Offset+0][0]
-
-    HeaderLength32 = int(Trame[Offset+0][1], 16)  
-
-    if HeaderLength32<5 :
+	#CHamps HeaderLength
+    HeaderLength = int(Trame[Offset+0][1], 16)  
+	#La valeur doit etre entre 5 et 15 inclus
+    if HeaderLength<5 :
         raise ValueError("	La Valeur minimum du header IP est 20 octets.")
-
+	#champs type of service
     Tos =  Trame[Offset+1]
-
+	
+	#Champs TotalLength
     TotalLength = Trame[Offset+2]+Trame[Offset+3]
     
-
+	#Fragmentation avec les flags
     Id = Trame[Offset+4]+Trame[Offset+5]
     PremierByte = format(int(Trame[Offset+6], 16), '08b')
     DeuxiemeByte = format(int(Trame[Offset+7], 16), '08b')
@@ -220,20 +223,23 @@ def IPVersion4(Trame):
     DFragment = PremierByte[1]
     MFragment = PremierByte[2]
     FragmentOffset = PremierByte[3:]+DeuxiemeByte
-
+	#time to live
     Ttl = Trame[Offset+8]
+    #Protocol
     Protocol = int(Trame[Offset+9], 16)
+    #HeaderCHecksum
+    HeaderChecksum = Trame[Offset+10]+Trame[Offset+11]
     
-    HeaderChecksum =Trame[Offset+10]+Trame[Offset+11]
+    #adresse IP source et destination sous le format :a.b.c.d
+    Srce_addr = '.'.join([str(int(x,16)) for x in Trame[Offset+12:Offset+16]])
+    Des_addr = '.'.join([str(int(x,16)) for x in Trame[Offset+16:Offset+20]])
     
-    Srce_addr= '.'.join([str(int(x,16)) for x in Trame[Offset+12:Offset+16]])
-    Des_addr='.'.join([str(int(x,16)) for x in Trame[Offset+16:Offset+20]])
-    
+    #OptionsType
     OptionsTypee = 1
-
+	#affichage des champs de l'entete IP
     print_s("   "+Colors.BOLD+Colors.UNDERLINE+"Internet Protocol Version 4:"+Colors.ENDC)
     print_s("\t{} .... = Version: 4 ".format(format(int(Version, 16), '04b')))
-    print_s("\t.... {} = Header Length: {} bytes ({}) ".format(format(int(str(HeaderLength32), 16), '04b'),int(str(HeaderLength32),16)*4,HeaderLength32))
+    print_s("\t.... {} = Header Length: {} bytes ({}) ".format(format(int(str(HeaderLength), 16), '04b'),int(str(HeaderLength),16)*4,HeaderLength))
     print_s("\tIdentification: 0x{} ({})".format(Id,int(Id,16)))
 
     Dic_not_set={"0":"Not set","1":"Set"}
@@ -252,13 +258,16 @@ def IPVersion4(Trame):
     print_s("\tSource Address: {}".format(Srce_addr))
     print_s("\tDestination Address: {}".format(Des_addr))
 
-#-----------------------------------------------------------------------------------------------------OPTIONS IP-----------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------Traitement des OPTIONS IP-----------------------------------------------------------------------------------------------------
 
+    #Si la valeur du HL et superieure à 5 c'est à dire on a une entete >20 octets dans ce cas on a des options  IP 
     
-    if (HeaderLength32 > 5):                             
+    if (HeaderLength > 5):                             
 
-        NmbrOctetsOptions = (HeaderLength32 - 5) * 4
-        print_s("\tOptions: {} bytes".format(NmbrOctetsOptions))
+        NmbrOctetsOptions = (HeaderLength - 5) * 4                # on a pour la valeur du HeaderLength represente le nombre de mot et chaque mot vaut 4 octets 
+        																						#et donc on fait le la longeur totale moins 5(nombre de mots sans les options)
+        
+        print_s("\tOptions: {} bytes".format(NmbrOctetsOptions))        #Affichage  de la taille des options en octets(bytes)
 
         off = Offset+20
 
@@ -266,17 +275,72 @@ def IPVersion4(Trame):
             if NmbrOctetsOptions == 0 : 
                 break
             PremierOctetOption = Trame[off]              
-
+			#Option EOL   End of Options List (EOL)
             if (int(PremierOctetOption, 16) == 0):
                 print_s("\t  IP Option  -  End of Options List (EOL)")
                 print_s("\t\tType: 0")
                 off+=1
                 NmbrOctetsOptions -=1
+            
+            #Option RA   Router Alert
+            elif (int(PremierOctetOption, 16) == 148):
+                print_s("\t  IP Option  -  Router Alert ")
+                print_s("\t\tType: 148")
+                Length = int(Trame[off+1], 16)
+                print_s("\t\tLength: {}".format(Length))
+                RouterAlert = int(Trame[off+2]+Trame[off+3], 16)
+                print_s("\t\tRouter Alert: Router shall examine packet ({})".format(RouterAlert))
+                off+=Length
+                NmbrOctetsOptions -= Length
+            
+            #option LSR   Loose Source Route
+            elif (int(PremierOctetOption, 16) == 131):
+                print_s("\t  IP Option  -  Loose Source Route (LSR)")
+
+                print_s("\t\tType: 131")
+
+                Length = int(Trame[off+1], 16)
+                print_s("\t\tLength: {}".format(Length))
+                Pointer = int(Trame[off+2], 16)
+
+                print_s("\t\tPointer: {}".format(Pointer))
+
+                for i in range((Length-3)//4):
+                    Route= '.'.join([str(int(x,16)) for x in Trame[off+3+i*4:off+7+i*4]])
+                    print_s("\t\tRoute: {}".format(Route)) 
+                off+=Length
+                NmbrOctetsOptions -= Length
+
+            
+            
+            #Option NOP  No Operation
             elif (int(PremierOctetOption, 16) == 1):
                 print_s("\t  IP Option  -  No Operation (NOP)")
                 print_s("\t\tType: 1")
                 off+=1
                 NmbrOctetsOptions -=1
+            
+            
+            
+            #Option SSR       Strict Source Route
+            elif (int(PremierOctetOption, 16) == 137):
+                print_s("\t  IP Option  -  Strict Source Route (SSR)")
+
+                print_s("\t\tType: 137")
+                Length = int(Trame[off+1], 16)
+
+                print_s("\t\tLength: {}".format(Length))
+                Pointer = int(Trame[off+2], 16)
+
+                print_s("\t\tPointer: {}".format(Pointer))
+
+                for i in range((Length-3)//4):
+                    Route= '.'.join([str(int(x,16)) for x in Trame[off+3+i*4:off+7+i*4]])
+                    print_s("\t\tRoute: {}".format(Route)) 
+                off+=Length
+                NmbrOctetsOptions -= Length
+
+			#Option RR     Record Route
             elif (int(PremierOctetOption, 16) == 7):
                 print_s("\t  IP Option  -  Record Route (RR)")
 
@@ -296,61 +360,23 @@ def IPVersion4(Trame):
                 off+=Length
                 NmbrOctetsOptions -= Length
 
-            elif (int(PremierOctetOption, 16) == 131):
-                print_s("\t  IP Option  -  Loose Source Route (LSR)")
-
-                print_s("\t\tType: 131")
-
-                Length = int(Trame[off+1], 16)
-                print_s("\t\tLength: {}".format(Length))
-                Pointer = int(Trame[off+2], 16)
-
-                print_s("\t\tPointer: {}".format(Pointer))
-
-                for i in range((Length-3)//4):
-                    Route= '.'.join([str(int(x,16)) for x in Trame[off+3+i*4:off+7+i*4]])
-                    print_s("\t\tRoute: {}".format(Route)) 
-                off+=Length
-                NmbrOctetsOptions -= Length
-
-            elif (int(PremierOctetOption, 16) == 137):
-                print_s("\t  IP Option  -  Strict Source Route (SSR)")
-
-                print_s("\t\tType: 137")
-                Length = int(Trame[off+1], 16)
-
-                print_s("\t\tLength: {}".format(Length))
-                Pointer = int(Trame[off+2], 16)
-
-                print_s("\t\tPointer: {}".format(Pointer))
-
-                for i in range((Length-3)//4):
-                    Route= '.'.join([str(int(x,16)) for x in Trame[off+3+i*4:off+7+i*4]])
-                    print_s("\t\tRoute: {}".format(Route)) 
-                off+=Length
-                NmbrOctetsOptions -= Length
-
-            elif (int(PremierOctetOption, 16) == 148):
-                print_s("\t  IP Option  -  Router Alert ")
-                print_s("\t\tType: 148")
-                Length = int(Trame[off+1], 16)
-                print_s("\t\tLength: {}".format(Length))
-                RouterAlert = int(Trame[off+2]+Trame[off+3], 16)
-                print_s("\t\tRouter Alert: Router shall examine packet ({})".format(RouterAlert))
-                off+=Length
-                NmbrOctetsOptions -= Length
+            
+            #Sinon l'option est non supporté
             else:
                 print_s("\t  IP Option non supporte ! ")
                 Length = int(Trame[off+1], 16)
                 off+=Length
                 NmbrOctetsOptions -= Length
+    
+    #Si le numero du protocole ==6 dans ce cas il n'est pas supporté car on nous demande de traiter UDP	
     if (Protocol == 6):
-        
+   			    
         print_s("Protocole TCP (non supporte !)")
 
+    # si le protocole c'est 17 dans ce cas on lance la foncion Udp qui affiche les champs de l'entete UDP
     elif Protocol == 17 : 
-        Udp(Trame,int(HeaderLength32)*4)
-
+        Udp(Trame,int(HeaderLength)*4)
+	#Sinon on affiche Protocol non supporté
     else:
         print_s("   "+Colors.BOLD+Colors.UNDERLINE+"Protocol n°{} non supporte".format(Protocol)+Colors.ENDC)
 
@@ -362,20 +388,29 @@ def ARP (Trm):
     """
     print_s("   "+Colors.BOLD+Colors.UNDERLINE+"Adress Resolution Protocol:"+Colors.ENDC)
     
+    
     Offset = 14  
     
+    #Initialisation des champs de l'entete ARP
     Hardware = Trm[Offset]+Trm[Offset+1]
+    
     ProtocolType = Trm[Offset+2]+Trm[Offset+3]
+    
     Hardlen = Trm[Offset+4]
+    
     Protlen = Trm[Offset+5]
     
     Oper =  Trm[Offset+6]+Trm[Offset+7]
     
     SenderHardwareAdress =  Trm[Offset+8]+":"+Trm[Offset+9]+":"+Trm[Offset+10]+":"+Trm[Offset+11]+":"+Trm[Offset+12]+":"+Trm[Offset+13]
+    
     SenderProtocolAdress =  ".".join([str(int(oc, 16)) for oc in Trm[Offset+14:Offset+18]])
+    
     TargetHardwareAddress =  Trm[Offset+18]+":"+Trm[Offset+19]+":"+Trm[Offset+20]+":"+Trm[Offset+21]+":"+Trm[Offset+22]+":"+Trm[Offset+23]
+    
     TargetProtocolAdress =  ".".join([str(int(oc, 16)) for oc in Trm[Offset+24:Offset+28]])
 
+	#Affichage des champs de l'entete ARP
     if   int(Hardware,16) == 1:  
         print_s("\tHardware type: Ethernet (1)")
         
@@ -408,6 +443,7 @@ def Udp (Trm, LongueurIP):
     """
     Offset = 14+LongueurIP 
 
+	#Initialisation des champs de l'entete UDP'	
     Source_port=Trm[Offset]+Trm[Offset+1]
 
     Dest_port=Trm[Offset+2]+Trm[Offset+3]
@@ -418,7 +454,8 @@ def Udp (Trm, LongueurIP):
 
     Length = Trm[Offset+4]+Trm[Offset+5]
     Checksum = Trm[Offset+6]+Trm[Offset+7]
-
+	
+	#Affichage des champs de l'entete UDP
     print_s("   "+Colors.BOLD+Colors.UNDERLINE+"User Datagram Protocol: (UDP)"+Colors.ENDC)
 
     print_s("\tSource port: {}".format(int(Source_port,16)))
@@ -433,7 +470,7 @@ def Udp (Trm, LongueurIP):
     if detect_dhcp:
         DHCP(Trm, 14 + LongueurIP + 8)
 
-#--------------------------------------------------------------------------------------------------Couche 07: DHCP--------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------Couche 07: DNS--------------------------------------------------------------------------------------------------
 
 def DHCP(trame,idd):
     print_s("   "+Colors.BOLD+Colors.UNDERLINE+"Dynamic Host Configuration Protocol : (DHCP)"+Colors.ENDC)
@@ -778,6 +815,7 @@ def hex_to_bin(byte):
     return '{:0>8}'.format(format(int(byte, 16), 'b'))
 
 def print_s(to_print):
+	#Fonction d'affichage utile 
     print(to_print)
     for c in [Colors.OKGREEN, Colors.UNDERLINE, Colors.WARNING, Colors.FAIL, Colors.BOLD, Colors.ENDC]:
         to_print = to_print.replace(c, "")
@@ -905,6 +943,7 @@ outputFile = open("resultatAnalyseur.txt", "w")
 #---------------------------------------------------------------------------------------------------main---------------------------------------------------------------------------------------------------------------
 
 def main():
+
     while True:
         NomFichier = input(Colors.BOLD+"Entrer le nom du fichier qui contient la(les) Trame(s) : "+Colors.ENDC)
         try:
@@ -913,9 +952,13 @@ def main():
             print("Fichier non existant !! ")
         else:
             break
+
     outputFile.write("Trame(s) extraite(s) du fichier : "+NomFichier+"\n")
+
     Dico = FichierParse(file)
+
     Layers(Dico)
+
     outputFile.close()
 
 
