@@ -1,6 +1,6 @@
 
 
-### Projet : analyseur de protocoles
+### Projet réseaux LU3IN033 : analyseur de protocoles réseau "offline"
 
 L’objectif de ce projet est de programmer un analyseur de protocoles réseau
 ‘oﬄine’. Il prend en entrée un fichier trace contenant les octets capturés
@@ -31,7 +31,7 @@ Le programme va analyser la(les) trame(s) du fichier passé en parametre et renv
 - Le nombre de trames correctes.
 - le resultat de l'analyse de toutes les trames.
 
-## Les Protocoles + options supportées 
+## Les Protocoles + options 
 
 #1-Couche 02 : Ethernet
 
@@ -43,7 +43,7 @@ Le programme va analyser la(les) trame(s) du fichier passé en parametre et renv
 
 #Protocole :IPV4
 
-Le programme traite que l'IPv4 il affiche ses champs :
+Le programme traite que l'IPv4, il affiche ses champs :
 
 - Version(4).
 - Header Length : qui est la longueur de l'entete au max 60Bytes.
